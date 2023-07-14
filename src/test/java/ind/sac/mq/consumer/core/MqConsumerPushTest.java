@@ -1,8 +1,6 @@
-package ind.sac;
+package ind.sac.mq.consumer.core;
 
-import ind.sac.mq.consumer.core.MqConsumerPush;
-
-public class Main {
+class MqConsumerPushTest {
     public static void main(String[] args) {
         MqConsumerPush mqConsumerPush = new MqConsumerPush();
         mqConsumerPush.start();
