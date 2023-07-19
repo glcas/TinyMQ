@@ -1,9 +1,9 @@
 package ind.sac.mq.consumer.api;
 
-public interface IMqConsumer {
+public interface IMQConsumer {
 
     void subscribe(String topicName, String tagRegax);
 
-    void registerListener(final IMqConsumerListener listener);
+    void registerListener(final IMQConsumerListener listener);
 
 }

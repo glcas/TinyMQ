@@ -19,17 +19,6 @@
             <artifactId>netty-all</artifactId>
             <version>4.1.90.Final</version>
         </dependency>
-        <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>fastjson</artifactId>
-            <version>2.0.32</version>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>1.18.26</version>
-            <scope>compile</scope>
-        </dependency>
         <!--日志系统依赖-->
         <!-- slf4j核心包-->
         <dependency>
@@ -60,6 +49,17 @@
             <artifactId>junit-jupiter</artifactId>
             <version>5.9.2</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.15.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>RELEASE</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 

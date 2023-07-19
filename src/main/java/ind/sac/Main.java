@@ -1,10 +1,10 @@
 package ind.sac;
 
-import ind.sac.mq.consumer.core.MqConsumerPush;
+import ind.sac.mq.consumer.core.MQPushedConsumer;
 
 public class Main {
     public static void main(String[] args) {
-        MqConsumerPush mqConsumerPush = new MqConsumerPush();
-        mqConsumerPush.start();
+        MQPushedConsumer mqPushedConsumer = new MQPushedConsumer();
+        mqPushedConsumer.start();
     }
 }
