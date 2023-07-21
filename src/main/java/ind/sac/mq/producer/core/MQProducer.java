@@ -11,6 +11,7 @@ import ind.sac.mq.common.rpc.RPCMessageDTO;
 import ind.sac.mq.common.support.invoke.IInvokeService;
 import ind.sac.mq.common.support.invoke.impl.InvokeService;
 import ind.sac.mq.common.utils.DelimiterUtil;
+import ind.sac.mq.common.utils.SnowFlake;
 import ind.sac.mq.producer.api.IMQProducer;
 import ind.sac.mq.producer.constant.ProducerConst;
 import ind.sac.mq.producer.constant.ProducerResponseCode;
@@ -28,8 +29,6 @@ import io.netty.handler.logging.LoggingHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static java.util.UUID.randomUUID;
-
 public class MQProducer extends Thread implements IMQProducer {
 
     private static final Logger logger = LoggerFactory.getLogger(MQProducer.class);
@@ -37,6 +36,9 @@ public class MQProducer extends Thread implements IMQProducer {
     private final String groupName;
 
     private final int port;
+
+    private final SnowFlake snowFlake;
+
     private final IInvokeService invokeService = new InvokeService();
 
     private String brokerAddr = "";
@@ -46,17 +48,18 @@ public class MQProducer extends Thread implements IMQProducer {
     private ChannelHandler channelHandler;
     private String delimiter = DelimiterUtil.DELIMITER;
 
-    public MQProducer(String groupName, int port) {
+    public MQProducer(String groupName, int port, int datacenterId, int machineId) {
         this.groupName = groupName;
         this.port = port;
+        this.snowFlake = new SnowFlake(datacenterId, machineId);
     }
 
     public MQProducer(String groupName) {
-        this(groupName, ProducerConst.DEFAULT_PORT);
+        this(groupName, ProducerConst.DEFAULT_PORT, ProducerConst.DEFAULT_DATACENTER_ID, ProducerConst.DEFAULT_MACHINE_ID);
     }
 
     public MQProducer() {
-        this(ProducerConst.DEFAULT_GROUP_NAME, ProducerConst.DEFAULT_PORT);
+        this(ProducerConst.DEFAULT_GROUP_NAME, ProducerConst.DEFAULT_PORT, ProducerConst.DEFAULT_DATACENTER_ID, ProducerConst.DEFAULT_MACHINE_ID);
     }
 
     public boolean isEnable() {
@@ -126,8 +129,8 @@ public class MQProducer extends Thread implements IMQProducer {
 
     @Override
     public SendResult syncSend(MQCommonRequest mqMessage) throws JsonProcessingException {
-        // TODO: 可以考虑更好的id构造方式（如雪花算法等）
-        String messageId = randomUUID().toString();
+        // TODO: 全局地将ID由String类型迁移至long型
+        String messageId = String.valueOf(this.snowFlake.nextId());
         mqMessage.setTraceId(messageId);
         mqMessage.setMethodType(MethodType.PRODUCER_SEND_MESSAGE);
         MQCommonResponse response = callServer(mqMessage, MQCommonResponse.class);
@@ -140,7 +143,7 @@ public class MQProducer extends Thread implements IMQProducer {
 
     @Override
     public SendResult onewaySend(MQCommonRequest mqMessage) throws JsonProcessingException {
-        String messageId = randomUUID().toString();
+        String messageId = String.valueOf(this.snowFlake.nextId());
         mqMessage.setTraceId(messageId);
         mqMessage.setMethodType(MethodType.PRODUCER_SEND_MESSAGE);
         this.callServer(mqMessage, null);
