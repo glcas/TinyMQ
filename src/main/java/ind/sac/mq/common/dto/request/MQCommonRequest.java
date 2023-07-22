@@ -4,17 +4,17 @@ import java.io.Serializable;
 import java.util.Objects;
 
 public class MQCommonRequest extends MQMessage implements Serializable {
-    private String traceId;
+    private long traceId;
     private String methodType;
 
     public MQCommonRequest() {
     }
 
-    public String getTraceId() {
+    public long getTraceId() {
         return this.traceId;
     }
 
-    public void setTraceId(String traceId) {
+    public void setTraceId(long traceId) {
         this.traceId = traceId;
     }
 
@@ -47,7 +47,7 @@ public class MQCommonRequest extends MQMessage implements Serializable {
         final int PRIME = 59;
         int result = 1;
         final Object $traceId = this.getTraceId();
-        result = result * PRIME + ($traceId == null ? 43 : $traceId.hashCode());
+        result = result * PRIME + $traceId.hashCode();
         final Object $methodType = this.getMethodType();
         result = result * PRIME + ($methodType == null ? 43 : $methodType.hashCode());
         return result;

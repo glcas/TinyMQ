@@ -41,10 +41,7 @@ public class MQConsumerHandler extends SimpleChannelInboundHandler {
             MQCommonResponse commonResponse = this.dispatch(rpcMessageDTO, channelHandlerContext);
             this.writeResponse(rpcMessageDTO, commonResponse, channelHandlerContext);
         } else {
-            final String requestId = rpcMessageDTO.getRequestId();
-            if (requestId.isEmpty()) {
-                return;
-            }
+            final long requestId = rpcMessageDTO.getRequestId();
             invokeService.addResponse(requestId, rpcMessageDTO);
         }
 

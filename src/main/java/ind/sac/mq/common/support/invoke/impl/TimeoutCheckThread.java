@@ -11,21 +11,21 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class TimeoutCheckThread implements Runnable {
 
-    private final ConcurrentHashMap<String, Long> requestMap;
-    private final ConcurrentHashMap<String, RPCMessageDTO> responseMap;
+    private final ConcurrentHashMap<Long, Long> requestMap;
+    private final ConcurrentHashMap<Long, RPCMessageDTO> responseMap;
 
-    public TimeoutCheckThread(@NotNull ConcurrentHashMap<String, Long> requestMap, ConcurrentHashMap<String, RPCMessageDTO> responseMap) {
+    public TimeoutCheckThread(@NotNull ConcurrentHashMap<Long, Long> requestMap, ConcurrentHashMap<Long, RPCMessageDTO> responseMap) {
         this.requestMap = requestMap;
         this.responseMap = responseMap;
     }
 
     @Override
     public void run() {
-        for (Map.Entry<String, Long> entry : requestMap.entrySet()) {
+        for (Map.Entry<Long, Long> entry : requestMap.entrySet()) {
             long expireTime = entry.getValue();
             long currentTime = System.currentTimeMillis();
             if (currentTime > expireTime) {
-                final String key = entry.getKey();
+                final long key = entry.getKey();
                 responseMap.putIfAbsent(key, RPCMessageDTO.timeout());
                 requestMap.remove(key);
             }

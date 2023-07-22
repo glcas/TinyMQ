@@ -14,7 +14,7 @@ public class RPCMessageDTO implements Serializable {
 
     private long time;
 
-    private String requestId;
+    private long requestId;
 
     private String methodType;
 
@@ -45,11 +45,11 @@ public class RPCMessageDTO implements Serializable {
         this.time = time;
     }
 
-    public String getRequestId() {
+    public long getRequestId() {
         return this.requestId;
     }
 
-    public void setRequestId(String requestId) {
+    public void setRequestId(long requestId) {
         this.requestId = requestId;
     }
 
@@ -130,7 +130,7 @@ public class RPCMessageDTO implements Serializable {
         final long $time = this.getTime();
         result = result * PRIME + (int) ($time >>> 32 ^ $time);
         final Object $requestId = this.getRequestId();
-        result = result * PRIME + ($requestId == null ? 43 : $requestId.hashCode());
+        result = result * PRIME + $requestId.hashCode();
         final Object $methodType = this.getMethodType();
         result = result * PRIME + ($methodType == null ? 43 : $methodType.hashCode());
         result = result * PRIME + (this.isRequest() ? 79 : 97);

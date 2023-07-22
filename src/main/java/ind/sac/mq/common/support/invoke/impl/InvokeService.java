@@ -22,9 +22,9 @@ public class InvokeService implements IInvokeService {
      * key: sequence id
      * value: request valid alive time
      */
-    private final ConcurrentHashMap<String, Long> requestMap;
+    private final ConcurrentHashMap<Long, Long> requestMap;
 
-    private final ConcurrentHashMap<String, RPCMessageDTO> responseMap;
+    private final ConcurrentHashMap<Long, RPCMessageDTO> responseMap;
 
     public InvokeService() {
         requestMap = new ConcurrentHashMap<>();
@@ -35,14 +35,14 @@ public class InvokeService implements IInvokeService {
     }
 
     @Override
-    public void addRequest(String sequenceId, long timeout) {
+    public void addRequest(long sequenceId, long timeout) {
         logger.debug("[Invoke] start add request for sequence ID: {}, timeout milliseconds: {}", sequenceId, timeout);
         final long expireTime = System.currentTimeMillis() + timeout;
         requestMap.putIfAbsent(sequenceId, expireTime);
     }
 
     @Override
-    public void addResponse(String sequenceId, RPCMessageDTO rpcResponse) throws JsonProcessingException {
+    public void addResponse(long sequenceId, RPCMessageDTO rpcResponse) throws JsonProcessingException {
         Long expireTime = this.requestMap.get(sequenceId);
         // 如果为空，可能是错误的请求id，也可能是已超时请求，被定时任务移除之后，服务端才开始处理请求
         // 直接忽略即可
@@ -75,7 +75,7 @@ public class InvokeService implements IInvokeService {
      * @return rpcResponse
      */
     @Override
-    public RPCMessageDTO getResponse(String sequenceId) {
+    public RPCMessageDTO getResponse(long sequenceId) {
         RPCMessageDTO rpcResponse = this.responseMap.get(sequenceId);
         if (Objects.nonNull(rpcResponse)) {
             logger.debug("[Invoke] sequence ID:{} - Got RPC response: {}", sequenceId, rpcResponse);

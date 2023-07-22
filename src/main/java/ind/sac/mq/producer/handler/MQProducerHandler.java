@@ -31,10 +31,6 @@ public class MQProducerHandler extends SimpleChannelInboundHandler {
             final String methodType = rpcMessageDTO.getMethodType();
             final String data = rpcMessageDTO.getData();
         } else {
-            if (rpcMessageDTO.getRequestId().isEmpty()) {
-                // deprecate response whose request id is empty
-                return;
-            }
             invokeService.addResponse(rpcMessageDTO.getRequestId(), rpcMessageDTO);
         }
     }

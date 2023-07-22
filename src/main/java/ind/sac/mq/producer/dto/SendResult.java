@@ -9,25 +9,25 @@ public class SendResult {
     /**
      * Unique Id
      */
-    private String messageId;
+    private long messageId;
 
     private SendStatus status;
 
     public SendResult() {
     }
 
-    public static SendResult of(String messageId, SendStatus status) {
+    public static SendResult of(long messageId, SendStatus status) {
         SendResult result = new SendResult();
         result.setMessageId(messageId);
         result.setStatus(status);
         return result;
     }
 
-    public String getMessageId() {
+    public long getMessageId() {
         return this.messageId;
     }
 
-    public void setMessageId(String messageId) {
+    public void setMessageId(long messageId) {
         this.messageId = messageId;
     }
 
@@ -60,7 +60,7 @@ public class SendResult {
         final int PRIME = 59;
         int result = 1;
         final Object $messageId = this.getMessageId();
-        result = result * PRIME + ($messageId == null ? 43 : $messageId.hashCode());
+        result = result * PRIME + $messageId.hashCode();
         final Object $status = this.getStatus();
         result = result * PRIME + ($status == null ? 43 : $status.hashCode());
         return result;

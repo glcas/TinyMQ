@@ -129,8 +129,7 @@ public class MQProducer extends Thread implements IMQProducer {
 
     @Override
     public SendResult syncSend(MQCommonRequest mqMessage) throws JsonProcessingException {
-        // TODO: 全局地将ID由String类型迁移至long型
-        String messageId = String.valueOf(this.snowFlake.nextId());
+        long messageId = this.snowFlake.nextId();
         mqMessage.setTraceId(messageId);
         mqMessage.setMethodType(MethodType.PRODUCER_SEND_MESSAGE);
         MQCommonResponse response = callServer(mqMessage, MQCommonResponse.class);
@@ -143,7 +142,7 @@ public class MQProducer extends Thread implements IMQProducer {
 
     @Override
     public SendResult onewaySend(MQCommonRequest mqMessage) throws JsonProcessingException {
-        String messageId = String.valueOf(this.snowFlake.nextId());
+        long messageId = this.snowFlake.nextId();
         mqMessage.setTraceId(messageId);
         mqMessage.setMethodType(MethodType.PRODUCER_SEND_MESSAGE);
         this.callServer(mqMessage, null);
@@ -160,7 +159,7 @@ public class MQProducer extends Thread implements IMQProducer {
      * @return 响应
      */
     public <T extends MQCommonRequest, R extends MQCommonResponse> R callServer(T commonRequest, Class<R> responseClass) throws JsonProcessingException {
-        final String traceId = commonRequest.getTraceId();
+        final long traceId = commonRequest.getTraceId();
 
         RPCMessageDTO rpcMessageDTO = new RPCMessageDTO();
         rpcMessageDTO.setRequestId(traceId);

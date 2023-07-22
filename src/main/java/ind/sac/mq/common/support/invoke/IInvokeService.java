@@ -11,9 +11,9 @@ public interface IInvokeService {
      * @param sequenceId sequence ID
      * @param timeout    timeout milliseconds
      */
-    void addRequest(final String sequenceId, final long timeout);
+    void addRequest(final long sequenceId, final long timeout);
 
-    void addResponse(final String sequenceId, final RPCMessageDTO rpcResponse) throws JsonProcessingException;
+    void addResponse(final long sequenceId, final RPCMessageDTO rpcResponse) throws JsonProcessingException;
 
-    RPCMessageDTO getResponse(final String sequenceId);
+    RPCMessageDTO getResponse(final long sequenceId);
 }

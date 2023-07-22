@@ -10,7 +10,7 @@ public class DelimiterUtil {
     public static final String DELIMITER = "~!@#$%^&*";
 
     /**
-     * length is necessary in case of avoiding overe buffer.
+     * length is necessary in case of avoiding buffer overflow.
      */
     public static final int LENGTH = 65536;
 
