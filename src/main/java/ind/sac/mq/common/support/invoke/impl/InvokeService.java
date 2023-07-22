@@ -1,11 +1,11 @@
 package ind.sac.mq.common.support.invoke.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import ind.sac.mq.common.exception.MQCommonResponseCode;
 import ind.sac.mq.common.exception.MQException;
 import ind.sac.mq.common.rpc.RPCMessageDTO;
 import ind.sac.mq.common.support.invoke.IInvokeService;
+import ind.sac.mq.common.utils.JsonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,8 +55,7 @@ public class InvokeService implements IInvokeService {
             rpcResponse = RPCMessageDTO.timeout();
         }
         responseMap.putIfAbsent(sequenceId, rpcResponse);
-        ObjectMapper objectMapper = new ObjectMapper();
-        logger.debug("[Invoke] sequence ID: {} - RPC response: {}", sequenceId, objectMapper.writeValueAsString(rpcResponse));
+        logger.debug("[Invoke] sequence ID: {} - RPC response: {}", sequenceId, JsonUtil.writeAsJsonString(rpcResponse));
         requestMap.remove(sequenceId);
         logger.debug("[Invoke] sequence ID: {} - Removed from request map.", sequenceId);
         // 同步块来获取当前对象的锁，并调用 notifyAll() 方法唤醒所有等待该对象锁的线程

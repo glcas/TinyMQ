@@ -1,13 +1,13 @@
 package ind.sac.mq.consumer.handler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import ind.sac.mq.common.constant.MethodType;
 import ind.sac.mq.common.dto.response.MQCommonResponse;
 import ind.sac.mq.common.exception.MQCommonResponseCode;
 import ind.sac.mq.common.rpc.RPCMessageDTO;
 import ind.sac.mq.common.support.invoke.IInvokeService;
 import ind.sac.mq.common.utils.DelimiterUtil;
+import ind.sac.mq.common.utils.JsonUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -33,8 +33,7 @@ public class MQConsumerHandler extends SimpleChannelInboundHandler {
         byte[] bytes = new byte[byteBuf.readableBytes()];
         byteBuf.readBytes(bytes);
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        RPCMessageDTO rpcMessageDTO = objectMapper.readValue(bytes, RPCMessageDTO.class);
+        RPCMessageDTO rpcMessageDTO = JsonUtil.parseJson(bytes, RPCMessageDTO.class);
 
         // 如果接收到的是请求，直接构造响应并写回
         // 否则是接收到的响应，存储之到自己的响应map中
@@ -78,8 +77,7 @@ public class MQConsumerHandler extends SimpleChannelInboundHandler {
         rpcMessageDTO.setTime(System.currentTimeMillis());
 
         // 实际响应体json化
-        ObjectMapper objectMapper = new ObjectMapper();
-        String data = objectMapper.writeValueAsString(commonResponse);
+        String data = JsonUtil.writeAsJsonString(commonResponse);
         rpcMessageDTO.setData(data);
 
         // 字节化

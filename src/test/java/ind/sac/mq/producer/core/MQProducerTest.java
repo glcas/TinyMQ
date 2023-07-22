@@ -1,8 +1,8 @@
 package ind.sac.mq.producer.core;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import ind.sac.mq.common.dto.request.MQCommonRequest;
+import ind.sac.mq.common.utils.JsonUtil;
 import ind.sac.mq.producer.dto.SendResult;
 
 import java.nio.charset.StandardCharsets;
@@ -23,8 +23,7 @@ class MQProducerTest {
         mqMessage.setPayload("Hello, world!".getBytes(StandardCharsets.UTF_8));
         SendResult sendResult = mqProducer.syncSend(mqMessage);
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        System.out.println(objectMapper.writeValueAsString(sendResult));
+        System.out.println(JsonUtil.writeAsJsonString(sendResult));
     }
 
 }

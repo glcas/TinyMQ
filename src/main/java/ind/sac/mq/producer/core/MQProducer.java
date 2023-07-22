@@ -1,7 +1,6 @@
 package ind.sac.mq.producer.core;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import ind.sac.mq.common.constant.MethodType;
 import ind.sac.mq.common.dto.request.MQCommonRequest;
 import ind.sac.mq.common.dto.response.MQCommonResponse;
@@ -11,6 +10,7 @@ import ind.sac.mq.common.rpc.RPCMessageDTO;
 import ind.sac.mq.common.support.invoke.IInvokeService;
 import ind.sac.mq.common.support.invoke.impl.InvokeService;
 import ind.sac.mq.common.utils.DelimiterUtil;
+import ind.sac.mq.common.utils.JsonUtil;
 import ind.sac.mq.common.utils.SnowFlake;
 import ind.sac.mq.producer.api.IMQProducer;
 import ind.sac.mq.producer.constant.ProducerConst;
@@ -161,14 +161,13 @@ public class MQProducer extends Thread implements IMQProducer {
      */
     public <T extends MQCommonRequest, R extends MQCommonResponse> R callServer(T commonRequest, Class<R> responseClass) throws JsonProcessingException {
         final String traceId = commonRequest.getTraceId();
-        ObjectMapper objectMapper = new ObjectMapper();
 
         RPCMessageDTO rpcMessageDTO = new RPCMessageDTO();
         rpcMessageDTO.setRequestId(traceId);
         rpcMessageDTO.setTime(System.currentTimeMillis());
         rpcMessageDTO.setMethodType(commonRequest.getMethodType());
         rpcMessageDTO.setRequest(true);
-        rpcMessageDTO.setData(objectMapper.writeValueAsString(commonRequest));  // commonRequest中只有traceId和methodType两字段，这一行目前只是用来占位
+        rpcMessageDTO.setData(JsonUtil.writeAsJsonString(commonRequest));  // commonRequest中只有traceId和methodType两字段，这一行目前只是用来占位
 
         invokeService.addRequest(traceId, responseTimeoutMilliseconds);
 
@@ -187,7 +186,7 @@ public class MQProducer extends Thread implements IMQProducer {
                 throw new MQException(MQCommonResponseCode.TIMEOUT);
             }
             String responseData = messageDTO.getData();
-            return objectMapper.readValue(responseData, responseClass);
+            return JsonUtil.parseJson(responseData, responseClass);
         }
     }
 }

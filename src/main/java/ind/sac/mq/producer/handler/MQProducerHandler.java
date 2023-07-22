@@ -1,8 +1,8 @@
 package ind.sac.mq.producer.handler;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import ind.sac.mq.common.rpc.RPCMessageDTO;
 import ind.sac.mq.common.support.invoke.IInvokeService;
+import ind.sac.mq.common.utils.JsonUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -26,8 +26,7 @@ public class MQProducerHandler extends SimpleChannelInboundHandler {
         byteBuf.readBytes(bytes);
         logger.debug("[Producer] ChannelId {} received message: {}.", channelHandlerContext.channel().id().asLongText(), new String(bytes));
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        RPCMessageDTO rpcMessageDTO = objectMapper.readValue(bytes, RPCMessageDTO.class);
+        RPCMessageDTO rpcMessageDTO = JsonUtil.parseJson(bytes, RPCMessageDTO.class);
         if (rpcMessageDTO.isRequest()) {
             final String methodType = rpcMessageDTO.getMethodType();
             final String data = rpcMessageDTO.getData();

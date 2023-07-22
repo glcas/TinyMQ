@@ -1,7 +1,6 @@
 package ind.sac.mq.common.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import ind.sac.mq.common.rpc.RPCMessageDTO;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -22,8 +21,7 @@ public class DelimiterUtil {
     }
 
     public static ByteBuf getDelimitedMessageBuffer(RPCMessageDTO rpcMessageDTO) throws JsonProcessingException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        String jsonStr = objectMapper.writeValueAsString(rpcMessageDTO);
+        String jsonStr = JsonUtil.writeAsJsonString(rpcMessageDTO);
         String delimitedJSON = jsonStr + DELIMITER;
         return Unpooled.copiedBuffer(delimitedJSON.getBytes());
     }
