@@ -2,12 +2,17 @@ package ind.sac.mq.consumer.handler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import ind.sac.mq.common.constant.MethodType;
+import ind.sac.mq.common.dto.request.MQRequestMessage;
 import ind.sac.mq.common.dto.response.MQCommonResponse;
-import ind.sac.mq.common.exception.MQCommonResponseCode;
-import ind.sac.mq.common.rpc.RPCMessageDTO;
+import ind.sac.mq.common.dto.response.MQConsumeResultResponse;
+import ind.sac.mq.common.response.ConsumeStatus;
+import ind.sac.mq.common.response.MQCommonResponseCode;
+import ind.sac.mq.common.rpc.RPCMessage;
 import ind.sac.mq.common.support.invoke.IInvokeService;
 import ind.sac.mq.common.utils.DelimiterUtil;
 import ind.sac.mq.common.utils.JsonUtil;
+import ind.sac.mq.consumer.api.IMQConsumerListenerService;
+import ind.sac.mq.consumer.support.listener.MQConsumerListenerContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -23,8 +28,11 @@ public class MQConsumerHandler extends SimpleChannelInboundHandler {
 
     private final IInvokeService invokeService;
 
-    public MQConsumerHandler(IInvokeService invokeService) {
+    private final IMQConsumerListenerService listenerService;
+
+    public MQConsumerHandler(IInvokeService invokeService, IMQConsumerListenerService listenerService) {
         this.invokeService = invokeService;
+        this.listenerService = listenerService;
     }
 
     @Override
@@ -33,52 +41,62 @@ public class MQConsumerHandler extends SimpleChannelInboundHandler {
         byte[] bytes = new byte[byteBuf.readableBytes()];
         byteBuf.readBytes(bytes);
 
-        RPCMessageDTO rpcMessageDTO = JsonUtil.parseJson(bytes, RPCMessageDTO.class);
+        RPCMessage rpcMessage = JsonUtil.parseJson(bytes, RPCMessage.class);
 
         // 如果接收到的是请求，直接构造响应并写回
         // 否则是接收到的响应，存储之到自己的响应map中
-        if (rpcMessageDTO.isRequest()) {
-            MQCommonResponse commonResponse = this.dispatch(rpcMessageDTO, channelHandlerContext);
-            this.writeResponse(rpcMessageDTO, commonResponse, channelHandlerContext);
+        if (rpcMessage.isRequest()) {
+            MQCommonResponse commonResponse = this.msgProcess(rpcMessage, channelHandlerContext);
+            this.writeResponse(rpcMessage, commonResponse, channelHandlerContext);
         } else {
-            final long requestId = rpcMessageDTO.getRequestId();
-            invokeService.addResponse(requestId, rpcMessageDTO);
+            final long requestId = rpcMessage.getTraceId();
+            invokeService.addResponse(requestId, rpcMessage);
         }
 
     }
 
-    private MQCommonResponse dispatch(RPCMessageDTO rpcMessageDTO, ChannelHandlerContext channelHandlerContext) {
-        final String methodType = rpcMessageDTO.getMethodType();
-        final String data = rpcMessageDTO.getData();
+    private MQCommonResponse msgProcess(RPCMessage rpcMessage, ChannelHandlerContext channelHandlerContext) {
+        final MethodType methodType = rpcMessage.getMethodType();
+        final String data = rpcMessage.getData();
         String channelId = channelHandlerContext.channel().id().asLongText();
         logger.debug("channelId: {} - Received method {} contents {}.", channelId, methodType, data);
-        if (MethodType.PRODUCER_SEND_MESSAGE.equals(methodType)) {
-            logger.info("Received from producer: {}", data);
-            // TODO: really handle received data
-            MQCommonResponse response = new MQCommonResponse();
-            response.setResponseCode(MQCommonResponseCode.SUCCESS.getCode());
-            response.setResponseMessage(MQCommonResponseCode.SUCCESS.getDescription());
-            return response;
+        if (methodType == MethodType.BROKER_MSG_PUSH) {
+            logger.info("Received message: {}", data);
+            // consume message
+            return this.consume(data);
         }
         throw new UnsupportedOperationException("Method type temporarily unsupported.");
     }
 
+    private MQCommonResponse consume(String mqMsgStr) {
+        try {
+            MQRequestMessage message = JsonUtil.parseJson(mqMsgStr, MQRequestMessage.class);
+            ConsumeStatus status = this.listenerService.consume(message, new MQConsumerListenerContext());
+            return new MQConsumeResultResponse(MQCommonResponseCode.SUCCESS.getCode(), MQCommonResponseCode.SUCCESS.getDescription(), status.getCode());
+        } catch (Exception e) {
+            logger.error("Consumed message error.", e);
+            return new MQConsumeResultResponse(MQCommonResponseCode.FAIL.getCode(), MQCommonResponseCode.FAIL.getDescription());
+        }
+    }
 
-    private void writeResponse(RPCMessageDTO request, MQCommonResponse commonResponse, ChannelHandlerContext channelHandlerContext) throws JsonProcessingException {
-        RPCMessageDTO rpcMessageDTO = new RPCMessageDTO();
+
+    private void writeResponse(RPCMessage request, MQCommonResponse commonResponse, ChannelHandlerContext channelHandlerContext) throws JsonProcessingException {
+        RPCMessage rpcMessage = new RPCMessage();
 
         // 设置响应头
-        rpcMessageDTO.setRequest(false);
-        rpcMessageDTO.setRequestId(request.getRequestId());
-        rpcMessageDTO.setMethodType(request.getMethodType());  // 方法类型与响应一致，因为响应是捆绑于请求的
-        rpcMessageDTO.setTime(System.currentTimeMillis());
+        rpcMessage.setRequest(false);
+        rpcMessage.setTraceId(request.getTraceId());
+        rpcMessage.setMethodType(request.getMethodType());  // 方法类型与响应一致，因为响应是捆绑于请求的
+        rpcMessage.setTime(System.currentTimeMillis());
+        rpcMessage.setResponseCode(commonResponse.getResponseCode());
+        rpcMessage.setResponseMessage(commonResponse.getResponseMessage());
 
         // 实际响应体json化
         String data = JsonUtil.writeAsJsonString(commonResponse);
-        rpcMessageDTO.setData(data);
+        rpcMessage.setData(data);
 
-        // 字节化
-        ByteBuf byteBuf = DelimiterUtil.getDelimitedMessageBuffer(rpcMessageDTO);
+        // 字节化并发送
+        ByteBuf byteBuf = DelimiterUtil.getDelimitedMessageBuffer(rpcMessage);
         channelHandlerContext.writeAndFlush(byteBuf);
     }
 

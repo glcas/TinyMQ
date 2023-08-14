@@ -10,6 +10,11 @@ public class MQCommonResponse implements Serializable {
     public MQCommonResponse() {
     }
 
+    public MQCommonResponse(String mqCommonResponseCode, String mqCommonResponseMsg) {
+        this.responseCode = mqCommonResponseCode;
+        this.responseMessage = mqCommonResponseMsg;
+    }
+
     public String getResponseCode() {
         return this.responseCode;
     }

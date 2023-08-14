@@ -1,6 +1,7 @@
 package ind.sac.mq.producer.handler;
 
-import ind.sac.mq.common.rpc.RPCMessageDTO;
+import ind.sac.mq.common.constant.MethodType;
+import ind.sac.mq.common.rpc.RPCMessage;
 import ind.sac.mq.common.support.invoke.IInvokeService;
 import ind.sac.mq.common.utils.JsonUtil;
 import io.netty.buffer.ByteBuf;
@@ -15,6 +16,14 @@ public class MQProducerHandler extends SimpleChannelInboundHandler {
 
     private IInvokeService invokeService;
 
+
+    public MQProducerHandler() {
+    }
+
+    public MQProducerHandler(IInvokeService invokeService) {
+        this.invokeService = invokeService;
+    }
+
     public void setInvokeService(IInvokeService invokeService) {
         this.invokeService = invokeService;
     }
@@ -26,12 +35,12 @@ public class MQProducerHandler extends SimpleChannelInboundHandler {
         byteBuf.readBytes(bytes);
         logger.debug("[Producer] ChannelId {} received message: {}.", channelHandlerContext.channel().id().asLongText(), new String(bytes));
 
-        RPCMessageDTO rpcMessageDTO = JsonUtil.parseJson(bytes, RPCMessageDTO.class);
-        if (rpcMessageDTO.isRequest()) {
-            final String methodType = rpcMessageDTO.getMethodType();
-            final String data = rpcMessageDTO.getData();
+        RPCMessage rpcMessage = JsonUtil.parseJson(bytes, RPCMessage.class);
+        if (rpcMessage.isRequest()) {
+            final MethodType methodType = rpcMessage.getMethodType();
+            final String data = rpcMessage.getData();
         } else {
-            invokeService.addResponse(rpcMessageDTO.getRequestId(), rpcMessageDTO);
+            invokeService.addResponse(rpcMessage.getTraceId(), rpcMessage);
         }
     }
 }

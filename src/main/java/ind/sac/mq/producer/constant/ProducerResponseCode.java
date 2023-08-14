@@ -1,10 +1,10 @@
 package ind.sac.mq.producer.constant;
 
-import ind.sac.mq.common.exception.ResponseCode;
+import ind.sac.mq.common.response.ResponseCode;
 
 public enum ProducerResponseCode implements ResponseCode {
 
-    PRODUCER_INIT_FAILED("P01", "producer start error");
+    PRODUCER_INIT_FAILED("P01", "Producer start error!");
 
     private final String code;
     private final String description;

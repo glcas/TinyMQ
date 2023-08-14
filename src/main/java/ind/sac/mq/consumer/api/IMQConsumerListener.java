@@ -1,10 +1,13 @@
 package ind.sac.mq.consumer.api;
 
-import ind.sac.mq.common.dto.request.MQMessage;
-import ind.sac.mq.consumer.constant.ConsumerStatus;
+import ind.sac.mq.common.dto.request.MQRequestMessage;
+import ind.sac.mq.common.response.ConsumeStatus;
 
+/**
+ * 消费者监听者接口，具体业务处理（消费）消费者收到的消息
+ */
 public interface IMQConsumerListener {
 
-    ConsumerStatus consumer(final MQMessage mqMessage, final IMQConsumerListenerContext context);
+    ConsumeStatus consume(final MQRequestMessage message, final IMQConsumerListenerContext context);
 
 }

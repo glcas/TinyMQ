@@ -1,9 +1,9 @@
 package ind.sac.mq.common.support.invoke.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import ind.sac.mq.common.exception.MQCommonResponseCode;
 import ind.sac.mq.common.exception.MQException;
-import ind.sac.mq.common.rpc.RPCMessageDTO;
+import ind.sac.mq.common.response.MQCommonResponseCode;
+import ind.sac.mq.common.rpc.RPCMessage;
 import ind.sac.mq.common.support.invoke.IInvokeService;
 import ind.sac.mq.common.utils.JsonUtil;
 import org.slf4j.Logger;
@@ -24,7 +24,7 @@ public class InvokeService implements IInvokeService {
      */
     private final ConcurrentHashMap<Long, Long> requestMap;
 
-    private final ConcurrentHashMap<Long, RPCMessageDTO> responseMap;
+    private final ConcurrentHashMap<Long, RPCMessage> responseMap;
 
     public InvokeService() {
         requestMap = new ConcurrentHashMap<>();
@@ -42,7 +42,7 @@ public class InvokeService implements IInvokeService {
     }
 
     @Override
-    public void addResponse(long sequenceId, RPCMessageDTO rpcResponse) throws JsonProcessingException {
+    public void addResponse(long sequenceId, RPCMessage rpcResponse) throws JsonProcessingException {
         Long expireTime = this.requestMap.get(sequenceId);
         // 如果为空，可能是错误的请求id，也可能是已超时请求，被定时任务移除之后，服务端才开始处理请求
         // 直接忽略即可
@@ -52,7 +52,7 @@ public class InvokeService implements IInvokeService {
         // 尽管有定时超时检查，但可能定时间隔比过期时长大，这里构造响应时已超时，但未到下一次超时检查任务执行
         if (System.currentTimeMillis() > expireTime) {
             logger.debug("[Invoke] sequence ID: {} - request timeout.", sequenceId);
-            rpcResponse = RPCMessageDTO.timeout();
+            rpcResponse = RPCMessage.timeout();
         }
         responseMap.putIfAbsent(sequenceId, rpcResponse);
         logger.debug("[Invoke] sequence ID: {} - RPC response: {}", sequenceId, JsonUtil.writeAsJsonString(rpcResponse));
@@ -75,8 +75,8 @@ public class InvokeService implements IInvokeService {
      * @return rpcResponse
      */
     @Override
-    public RPCMessageDTO getResponse(long sequenceId) {
-        RPCMessageDTO rpcResponse = this.responseMap.get(sequenceId);
+    public RPCMessage getResponse(long sequenceId) {
+        RPCMessage rpcResponse = this.responseMap.get(sequenceId);
         if (Objects.nonNull(rpcResponse)) {
             logger.debug("[Invoke] sequence ID:{} - Got RPC response: {}", sequenceId, rpcResponse);
             return rpcResponse;

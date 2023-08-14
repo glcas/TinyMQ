@@ -2,8 +2,8 @@ package ind.sac.mq.producer.constant;
 
 public enum SendStatus {
 
-    SUCCESS("SUCCESS", "successfully send"),
-    FAIL("FAIL", "send failed");
+    SUCCESS("SUCCESS", "Successfully send."),
+    FAIL("FAIL", "Send failed!");
 
     private final String code;
     private final String description;

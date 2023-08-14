@@ -1,5 +1,7 @@
 package ind.sac.mq.common.exception;
 
+import ind.sac.mq.common.response.ResponseCode;
+
 public class MQException extends RuntimeException {
 
     private final ResponseCode responseCode;

@@ -1,13 +1,20 @@
 package ind.sac.mq.common.dto.request;
 
+import ind.sac.mq.common.constant.MethodType;
+
 import java.io.Serializable;
 import java.util.Objects;
 
-public class MQCommonRequest extends MQMessage implements Serializable {
+public class MQCommonRequest implements Serializable {
     private long traceId;
-    private String methodType;
+    private MethodType methodType;
 
     public MQCommonRequest() {
+    }
+
+    public MQCommonRequest(long traceId, MethodType methodType) {
+        this.traceId = traceId;
+        this.methodType = methodType;
     }
 
     public long getTraceId() {
@@ -18,11 +25,11 @@ public class MQCommonRequest extends MQMessage implements Serializable {
         this.traceId = traceId;
     }
 
-    public String getMethodType() {
+    public MethodType getMethodType() {
         return this.methodType;
     }
 
-    public void setMethodType(String methodType) {
+    public void setMethodType(MethodType methodType) {
         this.methodType = methodType;
     }
 

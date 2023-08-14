@@ -1,22 +1,23 @@
 package ind.sac.mq.common.rpc;
 
-import ind.sac.mq.common.exception.MQCommonResponseCode;
+import ind.sac.mq.common.constant.MethodType;
+import ind.sac.mq.common.response.MQCommonResponseCode;
 
 import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * 是mq.common.dto中请求/响应类的封装，将其json化放至data中 <p/>
- * data中响应类已包含了逻辑得到的成功/失败标志
- * 故rpc-dto的响应码只在是响应且
+ * 本类是mq.common.dto中请求/响应类的封装，那些请求/响应类json化后存于本类的data字段 <p/>
+ * 本类data字段存储的响应类已包含了业务逻辑得到的成功/失败结果
+ * 故本类的响应字段（responseCode/responseMessage)与业务逻辑无关，只存储例如请求超时(TIMEOUT)这样的技术支持类型的响应信息
  */
-public class RPCMessageDTO implements Serializable {
+public class RPCMessage implements Serializable {
 
     private long time;
 
-    private long requestId;
+    private long traceId;
 
-    private String methodType;
+    private MethodType methodType;
 
     // 是否为请求信息
     private boolean isRequest;
@@ -27,11 +28,29 @@ public class RPCMessageDTO implements Serializable {
 
     private String data;
 
-    public RPCMessageDTO() {
+    public RPCMessage() {
     }
 
-    public static RPCMessageDTO timeout() {
-        RPCMessageDTO dto = new RPCMessageDTO();
+    public RPCMessage(long time, long traceId, MethodType methodType, boolean isRequest, String data) {
+        this.time = time;
+        this.traceId = traceId;
+        this.methodType = methodType;
+        this.isRequest = isRequest;
+        this.data = data;
+    }
+
+    public RPCMessage(long time, long traceId, MethodType methodType, boolean isRequest, String responseCode, String responseMessage, String data) {
+        this.time = time;
+        this.traceId = traceId;
+        this.methodType = methodType;
+        this.isRequest = isRequest;
+        this.responseCode = responseCode;
+        this.responseMessage = responseMessage;
+        this.data = data;
+    }
+
+    public static RPCMessage timeout() {
+        RPCMessage dto = new RPCMessage();
         dto.setResponseCode(MQCommonResponseCode.TIMEOUT.getCode());
         dto.setResponseMessage(MQCommonResponseCode.TIMEOUT.getDescription());
         return dto;
@@ -45,19 +64,19 @@ public class RPCMessageDTO implements Serializable {
         this.time = time;
     }
 
-    public long getRequestId() {
-        return this.requestId;
+    public long getTraceId() {
+        return this.traceId;
     }
 
-    public void setRequestId(long requestId) {
-        this.requestId = requestId;
+    public void setTraceId(long traceId) {
+        this.traceId = traceId;
     }
 
-    public String getMethodType() {
+    public MethodType getMethodType() {
         return this.methodType;
     }
 
-    public void setMethodType(String methodType) {
+    public void setMethodType(MethodType methodType) {
         this.methodType = methodType;
     }
 
@@ -95,12 +114,12 @@ public class RPCMessageDTO implements Serializable {
 
     public boolean equals(final Object o) {
         if (o == this) return true;
-        if (!(o instanceof RPCMessageDTO)) return false;
-        final RPCMessageDTO other = (RPCMessageDTO) o;
+        if (!(o instanceof RPCMessage)) return false;
+        final RPCMessage other = (RPCMessage) o;
         if (!other.canEqual(this)) return false;
         if (this.getTime() != other.getTime()) return false;
-        final Object this$requestId = this.getRequestId();
-        final Object other$requestId = other.getRequestId();
+        final Object this$requestId = this.getTraceId();
+        final Object other$requestId = other.getTraceId();
         if (!Objects.equals(this$requestId, other$requestId)) return false;
         final Object this$methodType = this.getMethodType();
         final Object other$methodType = other.getMethodType();
@@ -121,7 +140,7 @@ public class RPCMessageDTO implements Serializable {
     }
 
     protected boolean canEqual(final Object other) {
-        return other instanceof RPCMessageDTO;
+        return other instanceof RPCMessage;
     }
 
     public int hashCode() {
@@ -129,7 +148,7 @@ public class RPCMessageDTO implements Serializable {
         int result = 1;
         final long $time = this.getTime();
         result = result * PRIME + (int) ($time >>> 32 ^ $time);
-        final Object $requestId = this.getRequestId();
+        final Object $requestId = this.getTraceId();
         result = result * PRIME + $requestId.hashCode();
         final Object $methodType = this.getMethodType();
         result = result * PRIME + ($methodType == null ? 43 : $methodType.hashCode());
@@ -144,6 +163,6 @@ public class RPCMessageDTO implements Serializable {
     }
 
     public String toString() {
-        return "RPCMessageDTO(time=" + this.getTime() + ", requestId=" + this.getRequestId() + ", methodType=" + this.getMethodType() + ", isRequest=" + this.isRequest() + ", responseCode=" + this.getResponseCode() + ", responseMessage=" + this.getResponseMessage() + ", data=" + this.getData() + ")";
+        return "RPCMessageDTO(time=" + this.getTime() + ", requestId=" + this.getTraceId() + ", methodType=" + this.getMethodType() + ", isRequest=" + this.isRequest() + ", responseCode=" + this.getResponseCode() + ", responseMessage=" + this.getResponseMessage() + ", data=" + this.getData() + ")";
     }
 }

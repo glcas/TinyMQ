@@ -1,6 +1,6 @@
 package ind.sac.mq.common.support.invoke.impl;
 
-import ind.sac.mq.common.rpc.RPCMessageDTO;
+import ind.sac.mq.common.rpc.RPCMessage;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
@@ -12,9 +12,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TimeoutCheckThread implements Runnable {
 
     private final ConcurrentHashMap<Long, Long> requestMap;
-    private final ConcurrentHashMap<Long, RPCMessageDTO> responseMap;
+    private final ConcurrentHashMap<Long, RPCMessage> responseMap;
 
-    public TimeoutCheckThread(@NotNull ConcurrentHashMap<Long, Long> requestMap, ConcurrentHashMap<Long, RPCMessageDTO> responseMap) {
+    public TimeoutCheckThread(@NotNull ConcurrentHashMap<Long, Long> requestMap, ConcurrentHashMap<Long, RPCMessage> responseMap) {
         this.requestMap = requestMap;
         this.responseMap = responseMap;
     }
@@ -26,7 +26,7 @@ public class TimeoutCheckThread implements Runnable {
             long currentTime = System.currentTimeMillis();
             if (currentTime > expireTime) {
                 final long key = entry.getKey();
-                responseMap.putIfAbsent(key, RPCMessageDTO.timeout());
+                responseMap.putIfAbsent(key, RPCMessage.timeout());
                 requestMap.remove(key);
             }
         }

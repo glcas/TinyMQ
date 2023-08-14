@@ -1,4 +1,4 @@
-package ind.sac.mq.common.exception;
+package ind.sac.mq.common.response;
 
 public enum MQCommonResponseCode implements ResponseCode {
 
