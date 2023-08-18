@@ -4,7 +4,8 @@ import ind.sac.mq.common.response.ResponseCode;
 
 public enum ProducerResponseCode implements ResponseCode {
 
-    PRODUCER_INIT_FAILED("P01", "Producer start error!");
+    PRODUCER_INIT_FAILED("P01", "Producer start error!"),
+    PRODUCER_SHUTDOWN_ERROR("P02", "Error occurred while shutdown!");
 
     private final String code;
     private final String description;

@@ -21,6 +21,18 @@ public interface IInvokeService {
      */
     void addRequest(final long sequenceId, final long timeout);
 
+    void addResponse(final long sequenceId, final RPCMessage rpcResponse) throws JsonProcessingException;
+
+    /**
+     * 查看是否仍包含待处理请求
+     *
+     * @return 布尔结果
+     */
+    boolean remainsRequest();
+
+    RPCMessage getResponse(final long sequenceId);
+
+
     /**
      * 泛型T,R的上界由extends确定
      *
@@ -59,8 +71,4 @@ public interface IInvokeService {
             return JsonUtil.parseJson(response.getData(), responseClass);
         }
     }
-
-    void addResponse(final long sequenceId, final RPCMessage rpcResponse) throws JsonProcessingException;
-
-    RPCMessage getResponse(final long sequenceId);
 }

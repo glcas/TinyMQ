@@ -5,7 +5,7 @@ import ind.sac.mq.broker.api.IBrokerPushService;
 import ind.sac.mq.broker.api.IMQBrokerPersistService;
 import ind.sac.mq.broker.support.GroupNameChannel;
 import ind.sac.mq.common.constant.MethodType;
-import ind.sac.mq.common.dto.request.MQRequestMessage;
+import ind.sac.mq.common.dto.request.MQMessage;
 import ind.sac.mq.common.dto.response.MQConsumeResultResponse;
 import ind.sac.mq.common.response.ConsumeStatus;
 import ind.sac.mq.common.support.invoke.IInvokeService;
@@ -29,9 +29,9 @@ public class BrokerPushService implements IBrokerPushService {
     public void asyncPush(BrokerPushContext ctx) {
         executorService.submit(() -> {
             try {
-                logger.info("Start to asynchronously process: {}", JsonUtil.writeAsJsonString(ctx.mqPersistPutMsg().getMqRequestMessage()));
+                logger.info("Start to asynchronously push process: {}", JsonUtil.writeAsJsonString(ctx.mqPersistPutMsg().getMqRequestMessage()));
                 final IMQBrokerPersistService mqBrokerPersist = ctx.mqBrokerPersist();
-                final MQRequestMessage message = ctx.mqPersistPutMsg().getMqRequestMessage();
+                final MQMessage message = ctx.mqPersistPutMsg().getMqRequestMessage();
                 message.setMethodType(MethodType.BROKER_MSG_PUSH);
                 final long msgId = message.getTraceId();
                 for (GroupNameChannel groupNameChannel : ctx.channelList()) {

@@ -3,7 +3,7 @@ package ind.sac.mq.common.dto.request;
 import java.util.List;
 import java.util.Objects;
 
-public class MQRequestMessage extends MQCommonRequest {
+public class MQMessage extends MQCommonRequest {
 
     private String topic;
 
@@ -18,7 +18,7 @@ public class MQRequestMessage extends MQCommonRequest {
 
     private String shardingKey;
 
-    public MQRequestMessage() {
+    public MQMessage() {
     }
 
     public String getTopic() {
@@ -63,8 +63,8 @@ public class MQRequestMessage extends MQCommonRequest {
 
     public boolean equals(final Object o) {
         if (o == this) return true;
-        if (!(o instanceof MQRequestMessage)) return false;
-        final MQRequestMessage other = (MQRequestMessage) o;
+        if (!(o instanceof MQMessage)) return false;
+        final MQMessage other = (MQMessage) o;
         if (!other.canEqual(this)) return false;
         final Object this$topic = this.getTopic();
         final Object other$topic = other.getTopic();
@@ -82,7 +82,7 @@ public class MQRequestMessage extends MQCommonRequest {
     }
 
     protected boolean canEqual(final Object other) {
-        return other instanceof MQRequestMessage;
+        return other instanceof MQMessage;
     }
 
     public int hashCode() {

@@ -4,17 +4,20 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import ind.sac.mq.broker.dto.BrokerRegisterRequest;
 import ind.sac.mq.broker.dto.consumer.ConsumerSubscribeRequest;
 import ind.sac.mq.broker.support.ServiceEntry;
+import ind.sac.mq.broker.utils.ChannelUtils;
 import ind.sac.mq.common.constant.MethodType;
 import ind.sac.mq.common.dto.response.MQCommonResponse;
 import ind.sac.mq.common.exception.MQException;
 import ind.sac.mq.common.response.MQCommonResponseCode;
 import ind.sac.mq.common.rpc.RPCAddress;
 import ind.sac.mq.common.rpc.RPCChannelFuture;
+import ind.sac.mq.common.support.Destroyable;
+import ind.sac.mq.common.support.hook.IShutdownHook;
+import ind.sac.mq.common.support.hook.impl.ClientShutdownHook;
 import ind.sac.mq.common.support.invoke.IInvokeService;
 import ind.sac.mq.common.support.invoke.impl.InvokeService;
 import ind.sac.mq.common.utils.AddressUtil;
 import ind.sac.mq.common.utils.DelimiterUtil;
-import ind.sac.mq.common.utils.RandomUtil;
 import ind.sac.mq.common.utils.SnowFlake;
 import ind.sac.mq.consumer.api.IMQConsumer;
 import ind.sac.mq.consumer.api.IMQConsumerListener;
@@ -23,6 +26,7 @@ import ind.sac.mq.consumer.constant.ConsumerConst;
 import ind.sac.mq.consumer.constant.ConsumerResponseCode;
 import ind.sac.mq.consumer.handler.MQConsumerHandler;
 import ind.sac.mq.consumer.support.listener.MQConsumerListenerService;
+import ind.sac.mq.consumer.support.subscribe.LocalSubscribeInfo;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
@@ -32,23 +36,33 @@ import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
-public class MQConsumer extends Thread implements IMQConsumer {
+public class MQConsumer extends Thread implements IMQConsumer, Destroyable {
 
     private static final Logger logger = LoggerFactory.getLogger(MQConsumer.class);
 
     private final String groupName;
+
     private final SnowFlake snowFlake;
+
     private final List<RPCChannelFuture> channelFutureList = new ArrayList<>();
+
     private final IInvokeService invokeService = new InvokeService();
+
     private final IMQConsumerListenerService listenerService = new MQConsumerListenerService();
+
     private String brokerAddr;
+
     private long responseTimeoutMilliseconds = 5000;
+
+    // 本地记录且同步此消费者的订阅信息，以便在消费者注销时批量取消订阅
+    private final Set<LocalSubscribeInfo> localSubscribeInfoSet = new HashSet<>();
+
     private String delimiter = DelimiterUtil.DELIMITER;
+
     private boolean enable = false;
+    private long waitTimeForRemainRequest = 60 * 1000;
 
     public MQConsumer(String groupName, String brokerAddr, int datacenterId, int machineId) {
         this.groupName = groupName;
@@ -72,12 +86,21 @@ public class MQConsumer extends Thread implements IMQConsumer {
         this.responseTimeoutMilliseconds = responseTimeoutMilliseconds;
     }
 
+    public void setWaitTimeForRemainRequest(long waitTimeForRemainRequest) {
+        this.waitTimeForRemainRequest = waitTimeForRemainRequest;
+    }
+
     public void setDelimiter(String delimiter) {
         this.delimiter = delimiter;
     }
 
-    public boolean isEnable() {
+    public boolean enable() {
         return enable;
+    }
+
+    @Override
+    public void setEnableStatus(boolean status) {
+        this.enable = status;
     }
 
     @Override
@@ -88,7 +111,7 @@ public class MQConsumer extends Thread implements IMQConsumer {
 
             // 遍历建立消费者与其关联的那些brokers之间的channel，并且在对应broker储存本consumer的信息（注册）
             // 在RocketMQ中，消费者/生产者通过请求NameServer集群中的一个，来获得其所需的消息路由信息(brokers)
-            // 这里目前没有没有实现路由匹配功能，所以消费者/生产者至少一方需要尽量多地与broker建立通道，
+            // 这里目前没有实现路由匹配功能，所以消费者/生产者一方需要尽量多与broker建立通道，本项目选择消费者与所有broker建立通道
             List<RPCAddress> addressList = AddressUtil.splitAddrFromStr(brokerAddr);
             for (RPCAddress address :
                     addressList) {
@@ -128,7 +151,16 @@ public class MQConsumer extends Thread implements IMQConsumer {
                 RPCChannelFuture rpcChannelFuture = new RPCChannelFuture(host, port, weight, channelFuture);
                 channelFutureList.add(rpcChannelFuture);
             }
-            enable = true;
+            this.setEnableStatus(true);
+            // 实例停机钩子并注册，ShutdownHook最终会调用传入的destroyable接口对象重写的destroyAll方法
+            final IShutdownHook shutdownHook = new ClientShutdownHook(invokeService, this, waitTimeForRemainRequest);
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try {
+                    shutdownHook.shutdown();
+                } catch (Exception e) {
+                    throw new MQException(ConsumerResponseCode.CONSUMER_SHUTDOWN_ERROR);
+                }
+            }));
             logger.info("Message queue consumer server started.");
         } catch (Exception e) {
             logger.error("Error in starting message queue consumer");
@@ -136,37 +168,74 @@ public class MQConsumer extends Thread implements IMQConsumer {
         }
     }
 
+    /**
+     * 向所有已注册的broker订阅同一个消息，这要求producer只随机选一个broker发msg，不然consumer会收到重复消息
+     */
     @Override
     public void subscribe(String topicName, String tagRegex) throws InterruptedException, JsonProcessingException {
         // 检查异步的consumer初始化任务是否已完成，包括创建与broker之间的channel以及注册至broker，体现在enable标志位
-        while (!isEnable()) {
+        while (!this.enable()) {
             Thread.sleep(10);
         }
 
         ConsumerSubscribeRequest request = new ConsumerSubscribeRequest(snowFlake.nextId(), MethodType.CONSUMER_SUB, groupName, topicName, tagRegex);
 
-        // 从channelFutureList中随机选择一个channel
-        Channel channel = Objects.requireNonNull(RandomUtil.loadBalance(channelFutureList, "")).getChannelFuture().channel();
+        for (RPCChannelFuture channelFuture :
+                channelFutureList) {
+            Channel channel = channelFuture.getChannelFuture().channel();
 
-        MQCommonResponse response = Objects.requireNonNull(IInvokeService.callServer(channel, request, MQCommonResponse.class, invokeService, responseTimeoutMilliseconds));
-
-        if (!MQCommonResponseCode.SUCCESS.getCode().equals(response.getResponseCode())) {
-            throw new MQException(ConsumerResponseCode.CONSUMER_SUB_FAILED);
+            MQCommonResponse response = Objects.requireNonNull(IInvokeService.callServer(channel, request, MQCommonResponse.class, invokeService, responseTimeoutMilliseconds));
+            if (!MQCommonResponseCode.SUCCESS.getCode().equals(response.getResponseCode())) {
+                throw new MQException(ConsumerResponseCode.CONSUMER_SUB_FAILED);
+            }
         }
+
+        localSubscribeInfoSet.add(new LocalSubscribeInfo(topicName, tagRegex));
     }
 
+    /**
+     * 向所有已注册的broker取消订阅消息
+     */
     @Override
     public void unsubscribe(String topicName, String tagRegex) throws JsonProcessingException {
         ConsumerSubscribeRequest unSubReq = new ConsumerSubscribeRequest(snowFlake.nextId(), MethodType.CONSUMER_UNSUB, groupName, topicName, tagRegex);
-        Channel channel = Objects.requireNonNull(RandomUtil.loadBalance(channelFutureList, "")).getChannelFuture().channel();
-        MQCommonResponse response = Objects.requireNonNull(IInvokeService.callServer(channel, unSubReq, MQCommonResponse.class, invokeService, responseTimeoutMilliseconds));
-        if (!response.getResponseCode().equals(MQCommonResponseCode.SUCCESS.getCode())) {
-            throw new MQException(ConsumerResponseCode.CONSUMER_UNSUB_FAILED);
+        for (RPCChannelFuture channelFuture : channelFutureList) {
+            Channel channel = channelFuture.getChannelFuture().channel();
+            MQCommonResponse response = Objects.requireNonNull(IInvokeService.callServer(channel, unSubReq, MQCommonResponse.class, invokeService, responseTimeoutMilliseconds));
+            if (!response.getResponseCode().equals(MQCommonResponseCode.SUCCESS.getCode())) {
+                throw new MQException(ConsumerResponseCode.CONSUMER_UNSUB_FAILED);
+            }
         }
+        localSubscribeInfoSet.remove(new LocalSubscribeInfo(topicName, tagRegex));
     }
 
     @Override
     public void registerListener(IMQConsumerListener listener) {
         this.listenerService.register(listener);
+    }
+
+    @Override
+    public void destroyAll() throws JsonProcessingException {
+        // unsub->unregister->close-channel
+        localSubscribeInfoSet.forEach((e) -> {
+            try {
+                this.unsubscribe(e.getTopicName(), e.getTagRegex());
+            } catch (JsonProcessingException ex) {
+                throw new RuntimeException(ex);
+            }
+        });
+        for (RPCChannelFuture channelFuture :
+                channelFutureList) {
+            Channel channel = channelFuture.getChannelFuture().channel();
+            ServiceEntry serviceEntry = ChannelUtils.buildServiceEntry(channelFuture);
+            BrokerRegisterRequest unregisterReq = new BrokerRegisterRequest(snowFlake.nextId(), MethodType.CONSUMER_UNREGISTER, serviceEntry);
+            IInvokeService.callServer(channel, unregisterReq, null, invokeService, responseTimeoutMilliseconds);
+            channel.closeFuture().addListener((ChannelFutureListener) future -> {
+                if (!future.isSuccess()) {
+                    throw new MQException(future.cause(), ConsumerResponseCode.CONSUMER_SHUTDOWN_ERROR);
+                }
+            });
+            channel.close();
+        }
     }
 }

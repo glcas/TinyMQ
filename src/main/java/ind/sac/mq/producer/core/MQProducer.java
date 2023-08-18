@@ -3,13 +3,17 @@ package ind.sac.mq.producer.core;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import ind.sac.mq.broker.dto.BrokerRegisterRequest;
 import ind.sac.mq.broker.support.ServiceEntry;
+import ind.sac.mq.broker.utils.ChannelUtils;
 import ind.sac.mq.common.constant.MethodType;
-import ind.sac.mq.common.dto.request.MQRequestMessage;
+import ind.sac.mq.common.dto.request.MQMessage;
 import ind.sac.mq.common.dto.response.MQCommonResponse;
 import ind.sac.mq.common.exception.MQException;
 import ind.sac.mq.common.response.MQCommonResponseCode;
 import ind.sac.mq.common.rpc.RPCAddress;
 import ind.sac.mq.common.rpc.RPCChannelFuture;
+import ind.sac.mq.common.support.Destroyable;
+import ind.sac.mq.common.support.hook.IShutdownHook;
+import ind.sac.mq.common.support.hook.impl.ClientShutdownHook;
 import ind.sac.mq.common.support.invoke.IInvokeService;
 import ind.sac.mq.common.support.invoke.impl.InvokeService;
 import ind.sac.mq.common.utils.AddressUtil;
@@ -35,7 +39,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class MQProducer extends Thread implements IMQProducer {
+public class MQProducer extends Thread implements IMQProducer, Destroyable {
 
     private static final Logger logger = LoggerFactory.getLogger(MQProducer.class);
 
@@ -49,7 +53,10 @@ public class MQProducer extends Thread implements IMQProducer {
 
     private long responseTimeoutMilliseconds = 5000;
 
+    private long waitTimeForRemainRequest = 60 * 1000;
+
     private boolean enable = false;
+
     private String brokerAddr;
 
     private String delimiter = DelimiterUtil.DELIMITER;
@@ -68,8 +75,12 @@ public class MQProducer extends Thread implements IMQProducer {
         this(ProducerConst.DEFAULT_GROUP_NAME, ProducerConst.DEFAULT_BROKER_ADDRESS, ProducerConst.DEFAULT_DATACENTER_ID, ProducerConst.DEFAULT_MACHINE_ID);
     }
 
-    public boolean isEnable() {
+    public boolean enable() {
         return enable;
+    }
+
+    public void setEnableStatus(boolean status) {
+        this.enable = status;
     }
 
     public void setBrokerAddr(String brokerAddr) {
@@ -78,6 +89,10 @@ public class MQProducer extends Thread implements IMQProducer {
 
     public void setResponseTimeoutMilliseconds(long responseTimeoutMilliseconds) {
         this.responseTimeoutMilliseconds = responseTimeoutMilliseconds;
+    }
+
+    public void setWaitTimeForRemainRequest(long waitTimeForRemainRequest) {
+        this.waitTimeForRemainRequest = waitTimeForRemainRequest;
     }
 
     public void setDelimiter(String delimiter) {
@@ -118,7 +133,15 @@ public class MQProducer extends Thread implements IMQProducer {
                 logger.info("Registration sent to broker {}:{}, got response {}.", host, port, response);
                 channelFutureList.add(new RPCChannelFuture(host, port, weight, channelFuture));
             }
-            enable = true;
+            this.setEnableStatus(true);
+            final IShutdownHook shutdownHook = new ClientShutdownHook(invokeService, this, waitTimeForRemainRequest);
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try {
+                    shutdownHook.shutdown();
+                } catch (Exception e) {
+                    throw new MQException(ProducerResponseCode.PRODUCER_SHUTDOWN_ERROR);
+                }
+            }));
             logger.info("Message queue producer server started.");
         } catch (Exception e) {
             logger.error("Error in starting message queue producer");
@@ -127,7 +150,7 @@ public class MQProducer extends Thread implements IMQProducer {
     }
 
     @Override
-    public SendResult syncSend(MQRequestMessage mqMessage) throws JsonProcessingException {
+    public SendResult syncSend(MQMessage mqMessage) throws JsonProcessingException {
         long messageId = this.snowFlake.nextId();
         mqMessage.setTraceId(messageId);
         mqMessage.setMethodType(MethodType.PRODUCER_SEND_MSG);
@@ -141,12 +164,33 @@ public class MQProducer extends Thread implements IMQProducer {
     }
 
     @Override
-    public SendResult onewaySend(MQRequestMessage mqMessage) throws JsonProcessingException {
+    public SendResult onewaySend(MQMessage mqMessage) throws JsonProcessingException {
         long messageId = this.snowFlake.nextId();
         mqMessage.setTraceId(messageId);
         mqMessage.setMethodType(MethodType.PRODUCER_SEND_MSG);
         Channel channel = Objects.requireNonNull(RandomUtil.loadBalance(channelFutureList, mqMessage.getShardingKey())).getChannelFuture().channel();
         IInvokeService.callServer(channel, mqMessage, null, invokeService, responseTimeoutMilliseconds);
         return SendResult.of(messageId, SendStatus.FAIL);
+    }
+
+    @Override
+    public void destroyAll() throws JsonProcessingException {
+        for (RPCChannelFuture channelFuture :
+                channelFutureList) {
+            Channel channel = channelFuture.getChannelFuture().channel();
+
+            // 从broker里注销
+            ServiceEntry serviceEntry = ChannelUtils.buildServiceEntry(channelFuture);
+            BrokerRegisterRequest unregisterReq = new BrokerRegisterRequest(snowFlake.nextId(), MethodType.PRODUCER_UNREGISTER, serviceEntry);
+            IInvokeService.callServer(channel, unregisterReq, null, invokeService, responseTimeoutMilliseconds);
+
+            // 关闭通道
+            channel.closeFuture().addListener((ChannelFutureListener) future -> {
+                if (!future.isSuccess()) {
+                    throw new MQException(future.cause(), ProducerResponseCode.PRODUCER_SHUTDOWN_ERROR);
+                }
+            });
+            channel.close();
+        }
     }
 }

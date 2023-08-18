@@ -12,7 +12,7 @@ import ind.sac.mq.broker.support.GroupNameChannel;
 import ind.sac.mq.broker.support.push.BrokerPushContext;
 import ind.sac.mq.common.constant.MessageStatusConst;
 import ind.sac.mq.common.dto.request.MQConsumerPullRequest;
-import ind.sac.mq.common.dto.request.MQRequestMessage;
+import ind.sac.mq.common.dto.request.MQMessage;
 import ind.sac.mq.common.dto.response.MQCommonResponse;
 import ind.sac.mq.common.response.MQCommonResponseCode;
 import ind.sac.mq.common.rpc.RPCMessage;
@@ -97,7 +97,7 @@ public class MQBrokerHandler extends SimpleChannelInboundHandler {
     }
 
     private MQCommonResponse producerSendMessage(String requestJSON, boolean sendOneWay) throws JsonProcessingException {
-        MQRequestMessage requestMessage = JsonUtil.parseJson(requestJSON, MQRequestMessage.class);
+        MQMessage requestMessage = JsonUtil.parseJson(requestJSON, MQMessage.class);
 
         // 必须先持久化消息，因为异步发送消息方法将在此后更新持久化消息的状态
         MQPersistPutMsg persistPutMsg = new MQPersistPutMsg();

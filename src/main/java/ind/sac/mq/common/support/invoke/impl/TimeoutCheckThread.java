@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 此方法避免有请求发出后一直被挂起重试，导致内存浪费
+ * 此方法避免有请求发出后一直被挂起重试，导致CPU空占；以及请求/响应通信过程中丢失后的内存浪费
  */
 public class TimeoutCheckThread implements Runnable {
 

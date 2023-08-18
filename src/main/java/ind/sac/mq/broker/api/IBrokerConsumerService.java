@@ -5,7 +5,7 @@ import ind.sac.mq.broker.dto.consumer.ConsumerSubscribeRequest;
 import ind.sac.mq.broker.support.GroupNameChannel;
 import ind.sac.mq.broker.support.ServiceEntry;
 import ind.sac.mq.common.dto.request.MQHeartbeatRequest;
-import ind.sac.mq.common.dto.request.MQRequestMessage;
+import ind.sac.mq.common.dto.request.MQMessage;
 import ind.sac.mq.common.dto.response.MQCommonResponse;
 import io.netty.channel.Channel;
 
@@ -28,7 +28,7 @@ public interface IBrokerConsumerService {
     /**
      * Get list containing consumer's group & client channel.
      */
-    List<GroupNameChannel> getPushedSubscribeList(MQRequestMessage mqRequestMessage);
+    List<GroupNameChannel> getPushedSubscribeList(MQMessage mqMessage);
 
     void heartbeat(final MQHeartbeatRequest mqHeartbeatRequest, Channel channel) throws JsonProcessingException;
 

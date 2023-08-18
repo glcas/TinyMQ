@@ -1,22 +1,22 @@
 package ind.sac.mq.broker.dto.persist;
 
-import ind.sac.mq.common.dto.request.MQRequestMessage;
+import ind.sac.mq.common.dto.request.MQMessage;
 import ind.sac.mq.common.rpc.RPCAddress;
 
 public class MQPersistPutMsg {
 
-    private MQRequestMessage mqRequestMessage;
+    private MQMessage mqMessage;
 
     private RPCAddress rpcAddress;
 
     private String msgStatus;
 
-    public MQRequestMessage getMqRequestMessage() {
-        return mqRequestMessage;
+    public MQMessage getMqRequestMessage() {
+        return mqMessage;
     }
 
-    public void setMqRequestMessage(MQRequestMessage mqRequestMessage) {
-        this.mqRequestMessage = mqRequestMessage;
+    public void setMqRequestMessage(MQMessage mqMessage) {
+        this.mqMessage = mqMessage;
     }
 
     public RPCAddress getRpcAddress() {

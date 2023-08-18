@@ -7,7 +7,7 @@ import ind.sac.mq.broker.dto.consumer.ConsumerSubscribeRequest;
 import ind.sac.mq.broker.dto.consumer.SubscribedConsumer;
 import ind.sac.mq.broker.utils.ChannelUtils;
 import ind.sac.mq.common.dto.request.MQHeartbeatRequest;
-import ind.sac.mq.common.dto.request.MQRequestMessage;
+import ind.sac.mq.common.dto.request.MQMessage;
 import ind.sac.mq.common.dto.response.MQCommonResponse;
 import ind.sac.mq.common.exception.MQException;
 import ind.sac.mq.common.response.MQCommonResponseCode;
@@ -28,21 +28,25 @@ import java.util.regex.Pattern;
 public class LocalBrokerConsumerService implements IBrokerConsumerService {
 
     private static final Logger logger = LoggerFactory.getLogger(LocalBrokerConsumerService.class);
+
     /**
      * Scheduled remove BrokerServiceEntryChannel whose last access time exceeds 2 minutes.
      */
     private static final ScheduledExecutorService heartbeatScheduledService = Executors.newSingleThreadScheduledExecutor();
+
     /**
      * key: channel ID
      * value: BrokerServiceEntryChannel
      */
     private final Map<String, BrokerServiceEntryChannel> registerMap = new ConcurrentHashMap<>();
+
     /**
      * Subscribe map in push-policy
      * key: topic name
-     * value: specific topic's subscribe set
+     * value: specific topic's subscriber(consumer) set
      */
     private final Map<String, Set<SubscribedConsumer>> pushedSubscribeMap = new ConcurrentHashMap<>();
+
     /**
      * key: channel ID
      * value: BrokerServiceEntryChannel
@@ -125,19 +129,19 @@ public class LocalBrokerConsumerService implements IBrokerConsumerService {
      * 从请求话题(Topic)集合找到Tag能正则匹配请求的若干实体，将他们按照groupName分组后，每组选1个来响应<p/>
      * 在RocketMQ中，Topic是消息的一级分类，Tag是消息的二级分类；以groupName的分组可视为用于集群灾备
      *
-     * @param mqRequestMessage 请求消息，主要使用订阅的话题、标签
+     * @param mqMessage 请求消息，主要使用订阅的话题、标签
      * @return 处理对应请求的业务已注册的通道列表，即消息过来，找到匹配的订阅消费者
      */
     @Override
-    public List<GroupNameChannel> getPushedSubscribeList(MQRequestMessage mqRequestMessage) {
-        Set<SubscribedConsumer> consumerSet = pushedSubscribeMap.get(mqRequestMessage.getTopic());
+    public List<GroupNameChannel> getPushedSubscribeList(MQMessage mqMessage) {
+        Set<SubscribedConsumer> consumerSet = pushedSubscribeMap.get(mqMessage.getTopic());
         if (consumerSet.isEmpty()) {
             return Collections.emptyList();
         }
 
         // 用SubscribedConsumer里的正则匹配请求中的标签列表（生产者生成的消息附带有若干tags，每个消费者可接受一定范围的标签，以正则表示）
         // 只要消息的若干tags匹配上了一个就说明消费者需要该消息，将消费者按其groupName分组添加进map<groupName, list_of_consumers>中
-        final List<String> tagNameList = mqRequestMessage.getTags();
+        final List<String> tagNameList = mqMessage.getTags();
         Map<String, List<SubscribedConsumer>> groupMap = new HashMap<>();
         for (SubscribedConsumer consumer : consumerSet) {
             boolean hasMatch = false;
@@ -162,7 +166,7 @@ public class LocalBrokerConsumerService implements IBrokerConsumerService {
 
         // SubscribedConsumer按group name分组后，从每一组随机返回一个即可。
         // 最好应精心设计为根据sharding key进行选择
-        final String shardingKey = mqRequestMessage.getShardingKey();
+        final String shardingKey = mqMessage.getShardingKey();
         List<GroupNameChannel> groupNameChannelList = new ArrayList<>();
         for (Map.Entry<String, List<SubscribedConsumer>> entry : groupMap.entrySet()) {
             List<SubscribedConsumer> consumerSubBOList = entry.getValue();

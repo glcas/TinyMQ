@@ -1,6 +1,6 @@
 package ind.sac.mq.consumer.support.listener;
 
-import ind.sac.mq.common.dto.request.MQRequestMessage;
+import ind.sac.mq.common.dto.request.MQMessage;
 import ind.sac.mq.common.response.ConsumeStatus;
 import ind.sac.mq.consumer.api.IMQConsumerListener;
 import ind.sac.mq.consumer.api.IMQConsumerListenerContext;
@@ -16,7 +16,7 @@ public class MQConsumerListenerService implements IMQConsumerListenerService {
     }
 
     @Override
-    public ConsumeStatus consume(MQRequestMessage message, IMQConsumerListenerContext context) {
+    public ConsumeStatus consume(MQMessage message, IMQConsumerListenerContext context) {
         if (this.listener == null) {
             // 当前消费者没有监听者，没人消费它的消息
             return ConsumeStatus.SUCCESS;

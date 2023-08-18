@@ -2,7 +2,7 @@ package ind.sac.mq.consumer.handler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import ind.sac.mq.common.constant.MethodType;
-import ind.sac.mq.common.dto.request.MQRequestMessage;
+import ind.sac.mq.common.dto.request.MQMessage;
 import ind.sac.mq.common.dto.response.MQCommonResponse;
 import ind.sac.mq.common.dto.response.MQConsumeResultResponse;
 import ind.sac.mq.common.response.ConsumeStatus;
@@ -70,7 +70,7 @@ public class MQConsumerHandler extends SimpleChannelInboundHandler {
 
     private MQCommonResponse consume(String mqMsgStr) {
         try {
-            MQRequestMessage message = JsonUtil.parseJson(mqMsgStr, MQRequestMessage.class);
+            MQMessage message = JsonUtil.parseJson(mqMsgStr, MQMessage.class);
             ConsumeStatus status = this.listenerService.consume(message, new MQConsumerListenerContext());
             return new MQConsumeResultResponse(MQCommonResponseCode.SUCCESS.getCode(), MQCommonResponseCode.SUCCESS.getDescription(), status.getCode());
         } catch (Exception e) {

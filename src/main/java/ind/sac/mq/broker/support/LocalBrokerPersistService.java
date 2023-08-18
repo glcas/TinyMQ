@@ -3,7 +3,7 @@ package ind.sac.mq.broker.support;
 import ind.sac.mq.broker.api.IMQBrokerPersistService;
 import ind.sac.mq.broker.dto.persist.MQPersistPutMsg;
 import ind.sac.mq.common.dto.request.MQConsumerPullRequest;
-import ind.sac.mq.common.dto.request.MQRequestMessage;
+import ind.sac.mq.common.dto.request.MQMessage;
 import ind.sac.mq.common.dto.response.MQCommonResponse;
 import ind.sac.mq.common.dto.response.MQConsumerPullResponse;
 import ind.sac.mq.common.response.MQCommonResponseCode;
@@ -28,7 +28,7 @@ public class LocalBrokerPersistService implements IMQBrokerPersistService {
 
     @Override
     public synchronized MQCommonResponse put(MQPersistPutMsg mqMsg) {
-        MQRequestMessage requestMessage = mqMsg.getMqRequestMessage();
+        MQMessage requestMessage = mqMsg.getMqRequestMessage();
         final String topic = requestMessage.getTopic();
         List<MQPersistPutMsg> msgList = queueMap.get(topic);
         if (msgList == null) {

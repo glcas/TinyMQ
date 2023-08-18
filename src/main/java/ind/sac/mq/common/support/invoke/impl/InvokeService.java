@@ -41,6 +41,13 @@ public class InvokeService implements IInvokeService {
         requestMap.putIfAbsent(sequenceId, expireTime);
     }
 
+    /**
+     * 功能包含：响应超时检查、请求的本地移除和响应本地记录
+     *
+     * @param sequenceId  trace ID
+     * @param rpcResponse RPC响应体
+     * @throws JsonProcessingException 逆序列化异常
+     */
     @Override
     public void addResponse(long sequenceId, RPCMessage rpcResponse) throws JsonProcessingException {
         Long expireTime = this.requestMap.get(sequenceId);
@@ -49,7 +56,8 @@ public class InvokeService implements IInvokeService {
         if (Objects.isNull(expireTime)) {
             return;
         }
-        // 尽管有定时超时检查，但可能定时间隔比过期时长大，这里构造响应时已超时，但未到下一次超时检查任务执行
+        // 尽管配置了请求超时的定时检查任务，但可能定时间隔比过期时长大
+        // 所以可能出现接收到响应已超时，但未到下一次请求超时检查任务执行时，这时请求没有被移除，所以在此仍需校验响应是否超时
         if (System.currentTimeMillis() > expireTime) {
             logger.debug("[Invoke] sequence ID: {} - request timeout.", sequenceId);
             rpcResponse = RPCMessage.timeout();
@@ -92,5 +100,15 @@ public class InvokeService implements IInvokeService {
             rpcResponse = this.responseMap.get(sequenceId);
         }
         return rpcResponse;
+    }
+
+    /**
+     * 查看是否仍包含待处理请求
+     *
+     * @return 布尔结果
+     */
+    @Override
+    public boolean remainsRequest() {
+        return this.requestMap.size() > 0;
     }
 }
