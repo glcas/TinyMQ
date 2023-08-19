@@ -61,6 +61,8 @@ public class MQProducer extends Thread implements IMQProducer, Destroyable {
 
     private String delimiter = DelimiterUtil.DELIMITER;
 
+    private final EventLoopGroup group = new NioEventLoopGroup();
+
     public MQProducer(String groupName, String brokerAddr, int datacenterId, int machineId) {
         this.groupName = groupName;
         this.brokerAddr = brokerAddr;
@@ -110,7 +112,6 @@ public class MQProducer extends Thread implements IMQProducer, Destroyable {
                 final String host = address.getHost();
                 final int port = address.getPort();
                 final int weight = address.getWeight();
-                EventLoopGroup group = new NioEventLoopGroup();
                 Bootstrap bootstrap = new Bootstrap();
                 ChannelFuture channelFuture = bootstrap.group(group)
                         .channel(NioSocketChannel.class)
@@ -187,18 +188,11 @@ public class MQProducer extends Thread implements IMQProducer, Destroyable {
                 channelFutureList) {
             Channel channel = channelFuture.getChannelFuture().channel();
 
-            // 从broker里注销
+            // 从broker注销
             ServiceEntry serviceEntry = ChannelUtils.buildServiceEntry(channelFuture);
             BrokerRegisterRequest unregisterReq = new BrokerRegisterRequest(snowFlake.nextId(), MethodType.PRODUCER_UNREGISTER, serviceEntry);
             IInvokeService.callServer(channel, unregisterReq, null, invokeService, responseTimeoutMilliseconds);
-
-            // 关闭通道
-            channel.closeFuture().addListener((ChannelFutureListener) future -> {
-                if (!future.isSuccess()) {
-                    throw new MQException(future.cause(), ProducerResponseCode.PRODUCER_SHUTDOWN_ERROR);
-                }
-            });
-            channel.close();
         }
+        group.shutdownGracefully();
     }
 }

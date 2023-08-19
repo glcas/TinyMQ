@@ -59,6 +59,9 @@ public class MQConsumer extends Thread implements IMQConsumer, Destroyable {
     // 本地记录且同步此消费者的订阅信息，以便在消费者注销时批量取消订阅
     private final Set<LocalSubscribeInfo> localSubscribeInfoSet = new HashSet<>();
 
+    // channel线程池
+    private final EventLoopGroup workerGroup = new NioEventLoopGroup();
+
     private String delimiter = DelimiterUtil.DELIMITER;
 
     private boolean enable = false;
@@ -120,7 +123,6 @@ public class MQConsumer extends Thread implements IMQConsumer, Destroyable {
                 final int weight = address.getWeight();
 
                 // 消费者作为客户端，建立与对应broker之间的channel
-                EventLoopGroup workerGroup = new NioEventLoopGroup();
                 Bootstrap bootstrap = new Bootstrap();
                 ChannelFuture channelFuture = bootstrap.group(workerGroup)
                         .channel(NioSocketChannel.class)
@@ -128,7 +130,7 @@ public class MQConsumer extends Thread implements IMQConsumer, Destroyable {
                         // 在多线程中，handler可能会被多次调用，因此每次都需要新建
                         // 这里不可使用netty只有标识作用的注解@Shareable，因为目前的handler实现中应有独立不共享变量
                         // 而且事实上@Shareable需要自己去考虑竞争问题
-                        .handler(new ChannelInitializer<Channel>() {
+                        .handler(new ChannelInitializer<>() {
                             @Override
                             protected void initChannel(Channel channel) throws Exception {
                                 channel.pipeline()
@@ -149,7 +151,7 @@ public class MQConsumer extends Thread implements IMQConsumer, Destroyable {
 
                 // 客户端本地存储ChannelFuture
                 RPCChannelFuture rpcChannelFuture = new RPCChannelFuture(host, port, weight, channelFuture);
-                channelFutureList.add(rpcChannelFuture);
+                this.channelFutureList.add(rpcChannelFuture);
             }
             this.setEnableStatus(true);
             // 实例停机钩子并注册，ShutdownHook最终会调用传入的destroyable接口对象重写的destroyAll方法
@@ -216,7 +218,7 @@ public class MQConsumer extends Thread implements IMQConsumer, Destroyable {
 
     @Override
     public void destroyAll() throws JsonProcessingException {
-        // unsub->unregister->close-channel
+        // unsub->unregister
         localSubscribeInfoSet.forEach((e) -> {
             try {
                 this.unsubscribe(e.getTopicName(), e.getTagRegex());
@@ -230,12 +232,7 @@ public class MQConsumer extends Thread implements IMQConsumer, Destroyable {
             ServiceEntry serviceEntry = ChannelUtils.buildServiceEntry(channelFuture);
             BrokerRegisterRequest unregisterReq = new BrokerRegisterRequest(snowFlake.nextId(), MethodType.CONSUMER_UNREGISTER, serviceEntry);
             IInvokeService.callServer(channel, unregisterReq, null, invokeService, responseTimeoutMilliseconds);
-            channel.closeFuture().addListener((ChannelFutureListener) future -> {
-                if (!future.isSuccess()) {
-                    throw new MQException(future.cause(), ConsumerResponseCode.CONSUMER_SHUTDOWN_ERROR);
-                }
-            });
-            channel.close();
         }
+        workerGroup.shutdownGracefully();
     }
 }

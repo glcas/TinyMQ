@@ -32,12 +32,15 @@ Also fixed some bugs.
 - [启动类ServerBootstrap和Bootstrap](https://www.jianshu.com/p/c912dfe0dceb)
 - [bossGroup(parentGroup)和workerGroup(childGroup)的作用及关系](https://blog.csdn.net/weixin_44976692/article/details/118414027)
 - [数据发送方法WriteAndFlush()底层实现](https://www.cnblogs.com/ZhuChangwu/p/11228433.html)
+- [channelHandlerContext.close()与channel.close()](https://emacsist.github.io/2018/04/27/%E7%BF%BB%E8%AF%91netty4%E4%B8%AD-ctx.close-%E4%B8%8E-ctx.channel.close-%E7%9A%84%E5%8C%BA%E5%88%AB/)
+- [eventLoopGroup.shutdownGracefully()](https://blog.csdn.net/m0_45406092/article/details/104634198)
 
 ### Java编程最佳实践
 
 - [Objects.requireNonNull()方法：Fail-fast设计思想](https://blog.csdn.net/qq_42671519/article/details/121530411)
+- Jackson要求反序列化的类提供无参构造函数
 - [Lambda表达式](https://objcoding.com/2019/03/04/lambda/)
 - [方法引用](https://www.cnblogs.com/xiaoxi/p/7099667.html)
 - [JDK 9+ 字符串拼接探究](https://github.com/yesh0/stringbuilder-test)
   （注：循环字符串拼接仍以提前创建StringBuilder复用为佳，因为循环"+"拼接字符串会重复创建StringBuilder）
-- Jackson要求反序列化的类提供无参构造函数
+- [优雅关闭](https://blog.csdn.net/m0_45406092/article/details/104578672)

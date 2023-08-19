@@ -6,7 +6,9 @@ import ind.sac.mq.broker.utils.ChannelUtils;
 import ind.sac.mq.common.dto.response.MQCommonResponse;
 import ind.sac.mq.common.exception.MQException;
 import ind.sac.mq.common.response.MQCommonResponseCode;
+import ind.sac.mq.producer.constant.ProducerResponseCode;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,9 +32,14 @@ public class LocalBrokerProducerService implements IBrokerProducerService {
     }
 
     @Override
-    public MQCommonResponse unRegister(ServiceEntry serviceEntry, Channel channel) {
-        final String channelId = channel.id().asLongText();
-        registerMap.remove(channelId);
+    public MQCommonResponse unregister(ServiceEntry serviceEntry, Channel channel) {
+        registerMap.remove(channel.id().asLongText());
+        channel.closeFuture().addListener((ChannelFutureListener) future -> {
+            if (!future.isSuccess()) {
+                throw new MQException(future.cause(), ProducerResponseCode.PRODUCER_SHUTDOWN_ERROR);
+            }
+        });
+        channel.close();
 
         return new MQCommonResponse(MQCommonResponseCode.SUCCESS.getCode(), MQCommonResponseCode.SUCCESS.getDescription());
     }

@@ -69,28 +69,25 @@ public class MQBrokerHandler extends SimpleChannelInboundHandler {
     private MQCommonResponse dispatch(RPCMessage rpcMessage, ChannelHandlerContext ctx) {
         try {
             final String requestJSON = rpcMessage.getData();
-            switch (rpcMessage.getMethodType()) {
-                case PRODUCER_REGISTER:
-                    return producerService.register(JsonUtil.parseJson(requestJSON, BrokerRegisterRequest.class).getServiceEntry(), ctx.channel());
-                case PRODUCER_UNREGISTER:
-                    return producerService.unRegister(JsonUtil.parseJson(requestJSON, BrokerRegisterRequest.class).getServiceEntry(), ctx.channel());
-                case PRODUCER_SEND_MSG:
-                    return producerSendMessage(requestJSON, false);
-                case PRODUCER_SEND_MSG_ONE_WAY:
-                    return producerSendMessage(requestJSON, true);
-                case CONSUMER_REGISTER:
-                    return consumerService.register(JsonUtil.parseJson(requestJSON, BrokerRegisterRequest.class).getServiceEntry(), ctx.channel());
-                case CONSUMER_UNREGISTER:
-                    return consumerService.unregister(JsonUtil.parseJson(requestJSON, BrokerRegisterRequest.class).getServiceEntry(), ctx.channel());
-                case CONSUMER_SUB:
-                    return consumerService.subscribe(JsonUtil.parseJson(requestJSON, ConsumerSubscribeRequest.class), ctx.channel());
-                case CONSUMER_UNSUB:
-                    return consumerService.unsubscribe(JsonUtil.parseJson(requestJSON, ConsumerSubscribeRequest.class), ctx.channel());
-                case CONSUMER_MSG_PULL:
-                    return persistService.pull(JsonUtil.parseJson(requestJSON, MQConsumerPullRequest.class), ctx.channel());
-                default:
-                    throw new UnsupportedOperationException("Request method type temporarily unsupported.");
-            }
+            return switch (rpcMessage.getMethodType()) {
+                case PRODUCER_REGISTER ->
+                        producerService.register(JsonUtil.parseJson(requestJSON, BrokerRegisterRequest.class).getServiceEntry(), ctx.channel());
+                case PRODUCER_UNREGISTER ->
+                        producerService.unregister(JsonUtil.parseJson(requestJSON, BrokerRegisterRequest.class).getServiceEntry(), ctx.channel());
+                case PRODUCER_SEND_MSG -> producerSendMessage(requestJSON, false);
+                case PRODUCER_SEND_MSG_ONE_WAY -> producerSendMessage(requestJSON, true);
+                case CONSUMER_REGISTER ->
+                        consumerService.register(JsonUtil.parseJson(requestJSON, BrokerRegisterRequest.class).getServiceEntry(), ctx.channel());
+                case CONSUMER_UNREGISTER ->
+                        consumerService.unregister(JsonUtil.parseJson(requestJSON, BrokerRegisterRequest.class).getServiceEntry(), ctx.channel());
+                case CONSUMER_SUB ->
+                        consumerService.subscribe(JsonUtil.parseJson(requestJSON, ConsumerSubscribeRequest.class), ctx.channel());
+                case CONSUMER_UNSUB ->
+                        consumerService.unsubscribe(JsonUtil.parseJson(requestJSON, ConsumerSubscribeRequest.class), ctx.channel());
+                case CONSUMER_MSG_PULL ->
+                        persistService.pull(JsonUtil.parseJson(requestJSON, MQConsumerPullRequest.class), ctx.channel());
+                default -> throw new UnsupportedOperationException("Request method type temporarily unsupported.");
+            };
         } catch (Exception e) {
             return new MQCommonResponse(MQCommonResponseCode.FAIL.getCode(), MQCommonResponseCode.FAIL.getDescription());
         }
