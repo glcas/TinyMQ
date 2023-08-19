@@ -150,7 +150,12 @@ public class MQProducer extends Thread implements IMQProducer, Destroyable {
     }
 
     @Override
-    public SendResult syncSend(MQMessage mqMessage) throws JsonProcessingException {
+    public SendResult syncSend(MQMessage mqMessage) throws JsonProcessingException, InterruptedException {
+        // 确保producer可用（成功启动）才执行消息发送功能
+        while (!this.enable()) {
+            Thread.sleep(10);
+        }
+
         long messageId = this.snowFlake.nextId();
         mqMessage.setTraceId(messageId);
         mqMessage.setMethodType(MethodType.PRODUCER_SEND_MSG);
@@ -164,7 +169,10 @@ public class MQProducer extends Thread implements IMQProducer, Destroyable {
     }
 
     @Override
-    public SendResult onewaySend(MQMessage mqMessage) throws JsonProcessingException {
+    public SendResult onewaySend(MQMessage mqMessage) throws JsonProcessingException, InterruptedException {
+        while (!this.enable()) {
+            Thread.sleep(10);
+        }
         long messageId = this.snowFlake.nextId();
         mqMessage.setTraceId(messageId);
         mqMessage.setMethodType(MethodType.PRODUCER_SEND_MSG);

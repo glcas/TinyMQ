@@ -1,6 +1,7 @@
 package ind.sac.mq.producer.core;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import ind.sac.mq.broker.constant.BrokerConst;
 import ind.sac.mq.common.dto.request.MQMessage;
 import ind.sac.mq.common.utils.JsonUtil;
 import ind.sac.mq.producer.dto.SendResult;
@@ -10,20 +11,30 @@ import java.util.Arrays;
 
 class MQProducerTest {
 
+    private static final int producerNum = 2;
+
+    private static final int brokerNum = 5;
+
     public static void main(String[] args) throws InterruptedException, JsonProcessingException {
-        MQProducer mqProducer = new MQProducer();
-        mqProducer.start();
-        while (!mqProducer.enable()) {
-            Thread.sleep(10);
+        StringBuilder brokerAddrBuilder = new StringBuilder();
+        for (int i = 0; i < brokerNum; i++) {
+            brokerAddrBuilder.append("localhost:").append(BrokerConst.DEFAULT_PORT + i).append(",");
         }
 
-        MQMessage mqMessage = new MQMessage();
-        mqMessage.setTopic("TOPIC");
-        mqMessage.setTags(Arrays.asList("TAG_A", "TAG_B"));
-        mqMessage.setPayload("Hello, world!".getBytes(StandardCharsets.UTF_8));
-        SendResult sendResult = mqProducer.syncSend(mqMessage);
+        for (int i = 0; i < producerNum; i++) {
+            MQProducer producer = new MQProducer();
+            producer.setBrokerAddr(brokerAddrBuilder.toString());
+            producer.start();
 
-        System.out.println("Send result: " + JsonUtil.writeAsJsonString(sendResult));
+            MQMessage message = new MQMessage();
+            message.setTopic("TOPIC");
+            message.setTags(Arrays.asList("TAG_" + (i + 1), "TAG_" + (i + 2)));
+            message.setPayload(("Consumer " + (i + 1) + "&" + (i + 2) + " should received this message.").getBytes(StandardCharsets.UTF_8));
+            SendResult sendResult = producer.syncSend(message);
+
+            System.out.println("Producer" + (i + 1) + " send result: " + JsonUtil.writeAsJsonString(sendResult));
+        }
+
     }
 
 }

@@ -35,6 +35,9 @@ Also fixed some bugs.
 
 ### Java编程最佳实践
 
-- [Objects.requireNonNull()方法的意义](https://blog.csdn.net/qq_42671519/article/details/121530411)
+- [Objects.requireNonNull()方法：Fail-fast设计思想](https://blog.csdn.net/qq_42671519/article/details/121530411)
 - [Lambda表达式](https://objcoding.com/2019/03/04/lambda/)
+- [方法引用](https://www.cnblogs.com/xiaoxi/p/7099667.html)
+- [JDK 9+ 字符串拼接探究](https://github.com/yesh0/stringbuilder-test)
+  （注：循环字符串拼接仍以提前创建StringBuilder复用为佳，因为循环"+"拼接字符串会重复创建StringBuilder）
 - Jackson要求反序列化的类提供无参构造函数

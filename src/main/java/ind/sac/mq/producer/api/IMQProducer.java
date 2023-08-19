@@ -6,7 +6,7 @@ import ind.sac.mq.producer.dto.SendResult;
 
 public interface IMQProducer {
 
-    SendResult syncSend(final MQMessage mqMessage) throws JsonProcessingException;
+    SendResult syncSend(final MQMessage mqMessage) throws JsonProcessingException, InterruptedException;
 
     /**
      * 发了就视为成功，不管对面收没收到
@@ -15,6 +15,6 @@ public interface IMQProducer {
      * @return success signal
      * @throws JsonProcessingException json process exception
      */
-    SendResult onewaySend(final MQMessage mqMessage) throws JsonProcessingException;
+    SendResult onewaySend(final MQMessage mqMessage) throws JsonProcessingException, InterruptedException;
 
 }
