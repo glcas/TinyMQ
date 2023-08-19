@@ -8,7 +8,7 @@ public interface IBrokerProducerService {
 
     MQCommonResponse register(final ServiceEntry serviceEntry, Channel channel);
 
-    MQCommonResponse unRegister(final ServiceEntry serviceEntry, Channel channel);
+    MQCommonResponse unregister(final ServiceEntry serviceEntry, Channel channel);
 
     /**
      * Get info of service address.

@@ -32,6 +32,8 @@ Also fixed some bugs.
 - [启动类ServerBootstrap和Bootstrap](https://www.jianshu.com/p/c912dfe0dceb)
 - [bossGroup(parentGroup)和workerGroup(childGroup)的作用及关系](https://blog.csdn.net/weixin_44976692/article/details/118414027)
 - [数据发送方法WriteAndFlush()底层实现](https://www.cnblogs.com/ZhuChangwu/p/11228433.html)
+- [channelHandlerContext.close()与channel.close()](https://emacsist.github.io/2018/04/27/%E7%BF%BB%E8%AF%91netty4%E4%B8%AD-ctx.close-%E4%B8%8E-ctx.channel.close-%E7%9A%84%E5%8C%BA%E5%88%AB/)
+- [eventLoopGroup.shutdownGracefully()](https://blog.csdn.net/m0_45406092/article/details/104634198)
 
 ### Java编程最佳实践
 

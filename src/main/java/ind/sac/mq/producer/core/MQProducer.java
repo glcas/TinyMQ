@@ -191,14 +191,6 @@ public class MQProducer extends Thread implements IMQProducer, Destroyable {
             ServiceEntry serviceEntry = ChannelUtils.buildServiceEntry(channelFuture);
             BrokerRegisterRequest unregisterReq = new BrokerRegisterRequest(snowFlake.nextId(), MethodType.PRODUCER_UNREGISTER, serviceEntry);
             IInvokeService.callServer(channel, unregisterReq, null, invokeService, responseTimeoutMilliseconds);
-
-            // 关闭通道
-            channel.closeFuture().addListener((ChannelFutureListener) future -> {
-                if (!future.isSuccess()) {
-                    throw new MQException(future.cause(), ProducerResponseCode.PRODUCER_SHUTDOWN_ERROR);
-                }
-            });
-            channel.close();
         }
     }
 }

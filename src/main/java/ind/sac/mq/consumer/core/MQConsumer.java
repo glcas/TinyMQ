@@ -216,7 +216,7 @@ public class MQConsumer extends Thread implements IMQConsumer, Destroyable {
 
     @Override
     public void destroyAll() throws JsonProcessingException {
-        // unsub->unregister->close-channel
+        // unsub->unregister
         localSubscribeInfoSet.forEach((e) -> {
             try {
                 this.unsubscribe(e.getTopicName(), e.getTagRegex());
@@ -230,12 +230,6 @@ public class MQConsumer extends Thread implements IMQConsumer, Destroyable {
             ServiceEntry serviceEntry = ChannelUtils.buildServiceEntry(channelFuture);
             BrokerRegisterRequest unregisterReq = new BrokerRegisterRequest(snowFlake.nextId(), MethodType.CONSUMER_UNREGISTER, serviceEntry);
             IInvokeService.callServer(channel, unregisterReq, null, invokeService, responseTimeoutMilliseconds);
-            channel.closeFuture().addListener((ChannelFutureListener) future -> {
-                if (!future.isSuccess()) {
-                    throw new MQException(future.cause(), ConsumerResponseCode.CONSUMER_SHUTDOWN_ERROR);
-                }
-            });
-            channel.close();
         }
     }
 }

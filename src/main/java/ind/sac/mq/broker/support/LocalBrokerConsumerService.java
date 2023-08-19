@@ -13,7 +13,9 @@ import ind.sac.mq.common.exception.MQException;
 import ind.sac.mq.common.response.MQCommonResponseCode;
 import ind.sac.mq.common.utils.JsonUtil;
 import ind.sac.mq.common.utils.RandomUtil;
+import ind.sac.mq.consumer.constant.ConsumerResponseCode;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,11 +61,10 @@ public class LocalBrokerConsumerService implements IBrokerConsumerService {
         final long limitMilliseconds = 2 * 60 * 1000;
         heartbeatScheduledService.scheduleAtFixedRate(() -> {
             for (Map.Entry<String, BrokerServiceEntryChannel> entry : heartbeatMap.entrySet()) {
-                String key = entry.getKey();
                 long lastAccessTime = entry.getValue().getLastAccessTime();
                 if (System.currentTimeMillis() - lastAccessTime > limitMilliseconds) {
                     try {
-                        removeByChannelId(key);
+                        removeChannel(entry.getValue().getChannel());
                     } catch (JsonProcessingException e) {
                         throw new RuntimeException(e);
                     }
@@ -86,8 +87,7 @@ public class LocalBrokerConsumerService implements IBrokerConsumerService {
 
     @Override
     public MQCommonResponse unregister(ServiceEntry serviceEntry, Channel channel) throws JsonProcessingException {
-        final String channelId = channel.id().asLongText();
-        removeByChannelId(channelId);
+        removeChannel(channel);
         // construct successful response and return
         return new MQCommonResponse(MQCommonResponseCode.SUCCESS.getCode(), MQCommonResponseCode.SUCCESS.getDescription());
     }
@@ -205,11 +205,21 @@ public class LocalBrokerConsumerService implements IBrokerConsumerService {
         }
     }
 
-    private void removeByChannelId(final String channelId) throws JsonProcessingException {
+    private void removeChannel(final Channel channel) throws JsonProcessingException {
+        // 移除本地记录
+        String channelId = channel.id().asLongText();
         BrokerServiceEntryChannel channelRegister = registerMap.remove(channelId);
         logger.info("Register info removed - id: {}, channel: {}", channelId, JsonUtil.writeAsJsonString(channelRegister));
         BrokerServiceEntryChannel channelHeartbeat = heartbeatMap.remove(channelId);
         logger.info("Heartbeat info removed - id: {}, channel: {}", channelId, JsonUtil.writeAsJsonString(channelHeartbeat));
+
+        // 关闭连接通道
+        channel.closeFuture().addListener((ChannelFutureListener) future -> {
+            if (!future.isSuccess()) {
+                throw new MQException(future.cause(), ConsumerResponseCode.CONSUMER_SHUTDOWN_ERROR);
+            }
+        });
+        channel.close();
     }
 
     private Map<String, Set<SubscribedConsumer>> getSubscribeMapByConsumerType(String consumerType) {
