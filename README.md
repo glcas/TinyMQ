@@ -22,7 +22,7 @@ Also fixed some bugs.
 
 - [RocketMQ部分核心概念](https://www.cnblogs.com/qdhxhz/p/11094624.html)
 - [Topic、Tag和GroupName概念介绍](https://blog.csdn.net/agonie201218/article/details/118561943)
-- [消费者消息拉取模式解析](https://cloud.tencent.com/developer/article/1696821)
+- [消息“伪推送”模式解析](https://mp.weixin.qq.com/s/opqRf8UjI9rRW_4befWrbA)（消费者长轮询，相当于掌握是否接受推送的主动权）
 
 ### Netty网络编程
 

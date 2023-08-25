@@ -3,7 +3,7 @@ package ind.sac.mq.broker.support;
 import ind.sac.mq.common.rpc.RPCAddress;
 
 /**
- * Include info of group name, rpc address&port.
+ * Include info of group name, rpc host&port.
  */
 public class ServiceEntry extends RPCAddress {
 

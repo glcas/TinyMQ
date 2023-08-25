@@ -57,7 +57,7 @@ public class LocalBrokerConsumerService implements IBrokerConsumerService {
 
     public LocalBrokerConsumerService() {
         // scan scheduled 2 minutes
-        // 通过心跳机制维护消费者与broker之间的长连接，移除超过2分钟没有所需消息发来的挂起消费者
+        // 通过心跳机制维护消费者与broker之间的长连接，移除超过2分钟没有发来心跳的宕机消费者
         final long limitMilliseconds = 2 * 60 * 1000;
         heartbeatScheduledService.scheduleAtFixedRate(() -> {
             for (Map.Entry<String, BrokerServiceEntryChannel> entry : heartbeatMap.entrySet()) {
@@ -189,13 +189,14 @@ public class LocalBrokerConsumerService implements IBrokerConsumerService {
     }
 
     @Override
-    public void heartbeat(MQHeartbeatRequest mqHeartbeatRequest, Channel channel) throws JsonProcessingException {
+    public MQCommonResponse heartbeat(MQHeartbeatRequest mqHeartbeatRequest, Channel channel) throws JsonProcessingException {
         final String channelId = channel.id().asLongText();
-        logger.info("[Heartbeat - {}] Received from consumer, channel ID: {}", JsonUtil.writeAsJsonString(mqHeartbeatRequest), channelId);
-        ServiceEntry serviceEntry = new ServiceEntry(mqHeartbeatRequest.getAddress(), mqHeartbeatRequest.getPort());
+        logger.debug("[Heartbeat - {}] Received from consumer, channel ID: {}", JsonUtil.writeAsJsonString(mqHeartbeatRequest), channelId);
+        ServiceEntry serviceEntry = new ServiceEntry(mqHeartbeatRequest.getHost(), mqHeartbeatRequest.getPort());
         BrokerServiceEntryChannel entryChannel = ChannelUtils.buildEntryChannel(serviceEntry, channel);
         entryChannel.setLastAccessTime(mqHeartbeatRequest.getTime());
-        heartbeatMap.put(channelId, entryChannel);
+        heartbeatMap.put(channelId, entryChannel);  // 不是putIfAbsent，可更新Map
+        return null;
     }
 
     @Override

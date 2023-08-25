@@ -6,6 +6,7 @@ import ind.sac.mq.broker.dto.consumer.ConsumerSubscribeRequest;
 import ind.sac.mq.broker.support.ServiceEntry;
 import ind.sac.mq.broker.utils.ChannelUtils;
 import ind.sac.mq.common.constant.MethodType;
+import ind.sac.mq.common.dto.request.MQHeartbeatRequest;
 import ind.sac.mq.common.dto.response.MQCommonResponse;
 import ind.sac.mq.common.exception.MQException;
 import ind.sac.mq.common.response.MQCommonResponseCode;
@@ -37,6 +38,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class MQConsumer extends Thread implements IMQConsumer, Destroyable {
 
@@ -58,6 +61,8 @@ public class MQConsumer extends Thread implements IMQConsumer, Destroyable {
 
     // 本地记录且同步此消费者的订阅信息，以便在消费者注销时批量取消订阅
     private final Set<LocalSubscribeInfo> localSubscribeInfoSet = new HashSet<>();
+
+    private final ScheduledThreadPoolExecutor heartbeatScheduledExecutor = new ScheduledThreadPoolExecutor(8);
 
     // channel线程池
     private final EventLoopGroup workerGroup = new NioEventLoopGroup();
@@ -149,11 +154,22 @@ public class MQConsumer extends Thread implements IMQConsumer, Destroyable {
                 MQCommonResponse response = IInvokeService.callServer(channelFuture.channel(), registerRequest, MQCommonResponse.class, invokeService, responseTimeoutMilliseconds);
                 logger.info("Registration sent to broker {}:{}, got response {}.", host, port, response);
 
+                // 心跳配置
+                heartbeatScheduledExecutor.scheduleAtFixedRate(() -> {
+                    final MQHeartbeatRequest heartbeat = new MQHeartbeatRequest(snowFlake.nextId(), MethodType.CONSUMER_HEARTBEAT, host, port, System.currentTimeMillis());
+                    try {
+                        IInvokeService.callServer(channelFuture.channel(), heartbeat, null, invokeService, responseTimeoutMilliseconds);
+                    } catch (Exception e) {
+                        logger.error("[Heartbeat] Sent to server error!");
+                        throw new RuntimeException(e);
+                    }
+                }, 5, 5, TimeUnit.SECONDS);
+
                 // 客户端本地存储ChannelFuture
                 RPCChannelFuture rpcChannelFuture = new RPCChannelFuture(host, port, weight, channelFuture);
                 this.channelFutureList.add(rpcChannelFuture);
             }
-            this.setEnableStatus(true);
+
             // 实例停机钩子并注册，ShutdownHook最终会调用传入的destroyable接口对象重写的destroyAll方法
             final IShutdownHook shutdownHook = new ClientShutdownHook(invokeService, this, waitTimeForRemainRequest);
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -163,6 +179,8 @@ public class MQConsumer extends Thread implements IMQConsumer, Destroyable {
                     throw new MQException(ConsumerResponseCode.CONSUMER_SHUTDOWN_ERROR);
                 }
             }));
+
+            this.setEnableStatus(true);
             logger.info("Message queue consumer server started.");
         } catch (Exception e) {
             logger.error("Error in starting message queue consumer");

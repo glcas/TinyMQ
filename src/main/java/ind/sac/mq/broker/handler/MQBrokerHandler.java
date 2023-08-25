@@ -12,6 +12,7 @@ import ind.sac.mq.broker.support.GroupNameChannel;
 import ind.sac.mq.broker.support.push.BrokerPushContext;
 import ind.sac.mq.common.constant.MessageStatusConst;
 import ind.sac.mq.common.dto.request.MQConsumerPullRequest;
+import ind.sac.mq.common.dto.request.MQHeartbeatRequest;
 import ind.sac.mq.common.dto.request.MQMessage;
 import ind.sac.mq.common.dto.response.MQCommonResponse;
 import ind.sac.mq.common.response.MQCommonResponseCode;
@@ -84,6 +85,8 @@ public class MQBrokerHandler extends SimpleChannelInboundHandler {
                         consumerService.subscribe(JsonUtil.parseJson(requestJSON, ConsumerSubscribeRequest.class), ctx.channel());
                 case CONSUMER_UNSUB ->
                         consumerService.unsubscribe(JsonUtil.parseJson(requestJSON, ConsumerSubscribeRequest.class), ctx.channel());
+                case CONSUMER_HEARTBEAT ->
+                        consumerService.heartbeat(JsonUtil.parseJson(requestJSON, MQHeartbeatRequest.class), ctx.channel());
                 case CONSUMER_MSG_PULL ->
                         persistService.pull(JsonUtil.parseJson(requestJSON, MQConsumerPullRequest.class), ctx.channel());
                 default -> throw new UnsupportedOperationException("Request method type temporarily unsupported.");

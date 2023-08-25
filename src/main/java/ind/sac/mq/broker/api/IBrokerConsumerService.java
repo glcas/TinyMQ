@@ -30,7 +30,7 @@ public interface IBrokerConsumerService {
      */
     List<GroupNameChannel> getPushedSubscribeList(MQMessage mqMessage);
 
-    void heartbeat(final MQHeartbeatRequest mqHeartbeatRequest, Channel channel) throws JsonProcessingException;
+    MQCommonResponse heartbeat(final MQHeartbeatRequest mqHeartbeatRequest, Channel channel) throws JsonProcessingException;
 
     void checkChannelValid(final String channelId);
 }
