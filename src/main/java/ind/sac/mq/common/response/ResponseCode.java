@@ -9,6 +9,6 @@ public interface ResponseCode extends Serializable {
 
     String getCode();
 
-    String getDescription();
+    String getMessage();
 
 }

@@ -2,8 +2,8 @@ package ind.sac.mq.producer.core;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import ind.sac.mq.broker.constant.BrokerConst;
-import ind.sac.mq.common.dto.request.MQMessage;
-import ind.sac.mq.common.utils.JsonUtil;
+import ind.sac.mq.common.dto.Message;
+import ind.sac.mq.common.util.JsonUtil;
 import ind.sac.mq.producer.dto.SendResult;
 
 import java.nio.charset.StandardCharsets;
@@ -23,10 +23,10 @@ class MQProducerTest {
 
         for (int i = 0; i < producerNum; i++) {
             MQProducer producer = new MQProducer();
-            producer.setBrokerAddr(brokerAddrBuilder.toString());
+            producer.setBrokerAddress(brokerAddrBuilder.toString());
             producer.start();
 
-            MQMessage message = new MQMessage();
+            Message message = new Message();
             message.setTopic("TOPIC");
             message.setTags(Arrays.asList("TAG_" + (i + 1), "TAG_" + (i + 2)));
             message.setPayload(("Consumer " + (i + 1) + "&" + (i + 2) + " should received this message.").getBytes(StandardCharsets.UTF_8));

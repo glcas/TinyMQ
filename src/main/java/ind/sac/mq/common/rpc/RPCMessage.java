@@ -1,7 +1,7 @@
 package ind.sac.mq.common.rpc;
 
 import ind.sac.mq.common.constant.MethodType;
-import ind.sac.mq.common.response.MQCommonResponseCode;
+import ind.sac.mq.common.response.CommonResponseCode;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -10,7 +10,7 @@ import java.util.Objects;
  * 本类是mq.common.dto中请求/响应类的封装，那些请求/响应类json化后存于本类的data字段 <p/>
  * 本类data字段存储的响应类已包含了业务逻辑得到的成功/失败结果
  * 故本类的响应字段（responseCode/responseMessage)与业务逻辑无关，只主动写入例如请求超时(TIMEOUT)这样的技术支持类型的响应信息
- * 但其存在的意义是为了将响应关键信息提取至RPC层级
+ * 但其存在的意义是为了将响应信息提取至RPC层级
  */
 public class RPCMessage implements Serializable {
 
@@ -40,20 +40,10 @@ public class RPCMessage implements Serializable {
         this.data = data;
     }
 
-    public RPCMessage(long time, long traceId, MethodType methodType, boolean isRequest, String responseCode, String responseMessage, String data) {
-        this.time = time;
-        this.traceId = traceId;
-        this.methodType = methodType;
-        this.isRequest = isRequest;
-        this.responseCode = responseCode;
-        this.responseMessage = responseMessage;
-        this.data = data;
-    }
-
     public static RPCMessage timeout() {
         RPCMessage dto = new RPCMessage();
-        dto.setResponseCode(MQCommonResponseCode.TIMEOUT.getCode());
-        dto.setResponseMessage(MQCommonResponseCode.TIMEOUT.getDescription());
+        dto.setResponseCode(CommonResponseCode.TIMEOUT.getCode());
+        dto.setResponseMessage(CommonResponseCode.TIMEOUT.getMessage());
         return dto;
     }
 
@@ -115,8 +105,7 @@ public class RPCMessage implements Serializable {
 
     public boolean equals(final Object o) {
         if (o == this) return true;
-        if (!(o instanceof RPCMessage)) return false;
-        final RPCMessage other = (RPCMessage) o;
+        if (!(o instanceof RPCMessage other)) return false;
         if (!other.canEqual(this)) return false;
         if (this.getTime() != other.getTime()) return false;
         final Object this$requestId = this.getTraceId();

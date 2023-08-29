@@ -23,7 +23,7 @@ public enum ConsumerResponseCode implements ResponseCode {
     }
 
     @Override
-    public String getDescription() {
+    public String getMessage() {
         return this.description;
     }
 }

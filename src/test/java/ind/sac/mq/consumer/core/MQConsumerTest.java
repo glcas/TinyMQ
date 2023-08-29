@@ -2,7 +2,7 @@ package ind.sac.mq.consumer.core;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import ind.sac.mq.broker.constant.BrokerConst;
-import ind.sac.mq.common.response.ConsumeStatus;
+import ind.sac.mq.consumer.constant.ConsumeStatus;
 
 import java.nio.charset.StandardCharsets;
 
@@ -21,7 +21,7 @@ class MQConsumerTest {
         for (int i = 0; i < consumerNum; i++) {
             String consumerID = String.valueOf(i + 1);
             MQConsumer consumer = new MQConsumer(consumerID);
-            consumer.setBrokerAddr(brokerAddrBuilder.toString());
+            consumer.setBrokerAddress(brokerAddrBuilder.toString());
 
             // 重写的是run方法，但直接调用会在本线程中执行；而调用start方法会新开线程执行run
             consumer.start();

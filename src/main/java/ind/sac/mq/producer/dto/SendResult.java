@@ -9,7 +9,7 @@ public class SendResult {
     /**
      * Unique Id
      */
-    private long messageId;
+    private long traceId;
 
     private SendStatus status;
 
@@ -18,17 +18,17 @@ public class SendResult {
 
     public static SendResult of(long messageId, SendStatus status) {
         SendResult result = new SendResult();
-        result.setMessageId(messageId);
+        result.setTraceId(messageId);
         result.setStatus(status);
         return result;
     }
 
-    public long getMessageId() {
-        return this.messageId;
+    public long getTraceId() {
+        return this.traceId;
     }
 
-    public void setMessageId(long messageId) {
-        this.messageId = messageId;
+    public void setTraceId(long traceId) {
+        this.traceId = traceId;
     }
 
     public SendStatus getStatus() {
@@ -39,34 +39,24 @@ public class SendResult {
         this.status = status;
     }
 
-    public boolean equals(final Object o) {
-        if (o == this) return true;
-        if (!(o instanceof SendResult)) return false;
-        final SendResult other = (SendResult) o;
-        if (!other.canEqual(this)) return false;
-        final Object this$messageId = this.getMessageId();
-        final Object other$messageId = other.getMessageId();
-        if (!Objects.equals(this$messageId, other$messageId)) return false;
-        final Object this$status = this.getStatus();
-        final Object other$status = other.getStatus();
-        return Objects.equals(this$status, other$status);
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        SendResult that = (SendResult) o;
+        return traceId == that.traceId && status == that.status;
     }
 
-    protected boolean canEqual(final Object other) {
-        return other instanceof SendResult;
-    }
-
+    @Override
     public int hashCode() {
-        final int PRIME = 59;
-        int result = 1;
-        final Object $messageId = this.getMessageId();
-        result = result * PRIME + $messageId.hashCode();
-        final Object $status = this.getStatus();
-        result = result * PRIME + ($status == null ? 43 : $status.hashCode());
-        return result;
+        return Objects.hash(traceId, status);
     }
 
+    @Override
     public String toString() {
-        return "SendResult(messageId=" + this.getMessageId() + ", status=" + this.getStatus() + ")";
+        return "SendResult{" +
+                "traceId=" + traceId +
+                ", status=" + status +
+                '}';
     }
 }
