@@ -15,7 +15,7 @@ class MQProducerTest {
 
     private static final int producerNum = 3;
 
-    private static final int brokerNum = 1;
+    private static final int brokerNum = 2;
 
     public static void main(String[] args) throws InterruptedException, JsonProcessingException {
         StringBuilder brokerAddrBuilder = new StringBuilder();
@@ -26,7 +26,7 @@ class MQProducerTest {
         for (int i = 0; i < producerNum; i++) {
             MQProducer producer = new MQProducer();
             producer.setBrokerAddress(brokerAddrBuilder.toString());
-            producer.setResponseTimeout(Integer.MAX_VALUE);
+            // producer.setResponseTimeout(Integer.MAX_VALUE);
             producer.start();
 
             Message message = new Message();

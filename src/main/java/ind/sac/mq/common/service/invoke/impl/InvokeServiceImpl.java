@@ -79,14 +79,14 @@ public class InvokeServiceImpl implements InvokeService {
      * 在此之前该方法在无效wait，故应在命中率高时使用此方法，或减少超时响应 <p>
      * 尽管上一级调用者可能直接对Timeout抛出Exception，但这取决于上级
      *
-     * @param sequenceId 请求的id，响应也用的是同一个id来追踪
+     * @param traceId 请求的id，响应也用的是同一个id来追踪
      * @return rpcResponse
      */
     @Override
-    public RPCMessage getResponse(long sequenceId) {
-        RPCMessage rpcResponse = this.responseMap.get(sequenceId);
+    public RPCMessage getResponse(long traceId) {
+        RPCMessage rpcResponse = this.responseMap.get(traceId);
         if (Objects.nonNull(rpcResponse)) {
-            logger.debug("[Invoke] sequence ID:{} - Got RPC response: {}", sequenceId, rpcResponse);
+            logger.debug("[Invoke] trace ID:{} - Got RPC response: {}", traceId, rpcResponse);
             return rpcResponse;
         }
         while (Objects.isNull(rpcResponse)) {
@@ -97,7 +97,7 @@ public class InvokeServiceImpl implements InvokeService {
                     throw new MQException(CommonResponseCode.FAIL);
                 }
             }
-            rpcResponse = this.responseMap.get(sequenceId);
+            rpcResponse = this.responseMap.get(traceId);
         }
         return rpcResponse;
     }

@@ -258,7 +258,6 @@ public class BrokerConsumerServiceImpl implements BrokerConsumerService {
             }
             // producer发来了所需消息，或等待超时，被唤醒
             neededMessages = this.pendingConsumers.get(channelID).messages();
-//            logger.info(neededMessages.toString());
             this.pendingConsumers.remove(channelID);
         }
         return new ConsumerPullResponse(CommonResponseCode.SUCCESS.getCode(), CommonResponseCode.SUCCESS.getMessage(), neededMessages);

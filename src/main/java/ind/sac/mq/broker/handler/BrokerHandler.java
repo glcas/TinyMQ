@@ -77,7 +77,6 @@ public class BrokerHandler extends SimpleChannelInboundHandler {
 
     private CommonResponse dispatch(RPCMessage rpcMessage, ChannelHandlerContext ctx) {
         try {
-            logger.info(this.persistenceService.getMessageByTopicMap().toString());
             final String requestJSON = rpcMessage.getData();
             return switch (rpcMessage.getMethodType()) {
                 case PRODUCER_REGISTER ->
@@ -117,7 +116,7 @@ public class BrokerHandler extends SimpleChannelInboundHandler {
         messagePO.setMessage(message);
         messagePO.setConsumeStatus(ConsumeStatus.IDLE);
         CommonResponse response = persistenceService.save(messagePO);
-//        logger.info(persistService.getMessageByTopicMap().toString());
+
         consumerService.notifyPendingConsumers(messagePO);
 
         return sendOneWay ? null : response;

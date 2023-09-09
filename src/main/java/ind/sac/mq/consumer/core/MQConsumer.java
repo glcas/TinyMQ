@@ -57,6 +57,8 @@ public class MQConsumer extends Thread implements Destroyable {
     private final InvokeService invokeService = new InvokeServiceImpl();
 
     private final ConsumerListenerService listenerService = new ConsumerListenerServiceImpl();
+
+    // 如果在定时任务配置里遍历channel并调用，会出现各channel间消息混杂的问题
     private final ScheduledThreadPoolExecutor scheduledThreadPoolExecutor = new ScheduledThreadPoolExecutor(10);
     private int weight = 0;  // 本消费者的权重
     private String brokerAddress;
@@ -177,32 +179,28 @@ public class MQConsumer extends Thread implements Destroyable {
                     }
                 }, 5, 5, TimeUnit.SECONDS);
 
-
-                // 客户端本地存储channel
-                this.channels.add(channelFuture.channel());
-            }
-
-            // 长轮询配置
-            scheduledThreadPoolExecutor.scheduleWithFixedDelay(() -> {
-                // TODO 在这里添加负载情况判断，消费者中有大量消息未消费时暂停长轮询
-                if (!subscribeInfos.isEmpty()) {
-                    ConsumerPullRequest pullRequest = new ConsumerPullRequest(snowFlake.nextId(), MethodType.CONSUMER_LONG_POLLING, this.groupName, this.pullSize, this.subscribeInfos);
-                    channels.forEach((channel -> {
+                // 长轮询配置
+                scheduledThreadPoolExecutor.scheduleWithFixedDelay(() -> {
+                    // TODO 在这里添加负载情况判断，消费者中有大量消息未消费时暂停长轮询
+                    if (!subscribeInfos.isEmpty()) {
+                        ConsumerPullRequest pullRequest = new ConsumerPullRequest(snowFlake.nextId(), MethodType.CONSUMER_LONG_POLLING, this.groupName, this.pullSize, this.subscribeInfos);
                         try {
-                            ConsumerPullResponse pullResponse = InvokeService.callServer(channel, pullRequest, ConsumerPullResponse.class, invokeService, longPollTimeout);
-//                            logger.info(channel + " and " + pullResponse.toString());  // why messageList can be null in parallel-stream? 试一下打instance log出来，一个instance似乎可有多个channel
+                            ConsumerPullResponse pullResponse = InvokeService.callServer(channelFuture.channel(), pullRequest, ConsumerPullResponse.class, invokeService, longPollTimeout);
                             for (Message message : pullResponse.getMessages()) {
                                 ConsumeStatus status = this.listenerService.consume(message, new ConsumerListenerContextImpl());
                                 ConsumeStatusUpdateRequest consumeStatusUpdateRequest = new ConsumeStatusUpdateRequest(snowFlake.nextId(), MethodType.CONSUMER_PULL_ACK, message.getTraceId(), status);
-                                InvokeService.callServer(channel, consumeStatusUpdateRequest, null, invokeService, responseTimeout);
+                                InvokeService.callServer(channelFuture.channel(), consumeStatusUpdateRequest, null, invokeService, responseTimeout);
                             }
                         } catch (Exception e) {
                             logger.error("Error occur in long polling: ", e);
                             throw new RuntimeException(e);
                         }
-                    }));
-                }
-            }, 1000, 500, TimeUnit.MILLISECONDS);
+                    }
+                }, 1000, 500, TimeUnit.MILLISECONDS);
+
+                // 客户端本地存储channel
+                this.channels.add(channelFuture.channel());
+            }
 
             // 新建停机钩子并注册，ShutdownHook最终会调用传入的destroyable接口对象重写的destroyAll方法
             final ShutdownHook shutdownHook = new ClientShutdownHook(invokeService, this, waitTimeForRemainRequest);

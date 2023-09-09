@@ -39,7 +39,7 @@ public class MessagePO {
     @Override
     public String toString() {
         return "MessagePO{" +
-                "message=" + message.getTopic() + ", " + message.getTags() +
+                "message=" + message.getTopic() + " - " + message.getTags() + ", " +
                 "status=" + consumeStatus +
                 '}';
     }

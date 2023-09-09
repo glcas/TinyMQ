@@ -12,7 +12,7 @@ class MQConsumerTest {
 
     private static final int consumerNum = 4;
 
-    private static final int brokerNum = 1;
+    private static final int brokerNum = 2;
 
     public static void main(String[] args) throws InterruptedException, JsonProcessingException {
         StringBuilder brokerAddrBuilder = new StringBuilder();
@@ -24,7 +24,7 @@ class MQConsumerTest {
             String consumerID = String.valueOf(i + 1);
             MQConsumer consumer = new MQConsumer(consumerID);
             consumer.setBrokerAddress(brokerAddrBuilder.toString());
-            consumer.setResponseTimeout(Integer.MAX_VALUE);
+            // consumer.setResponseTimeout(Integer.MAX_VALUE);
 
             // 重写的是run方法，但直接调用会在本线程中执行；而调用start方法会新开线程执行run
             consumer.start();
