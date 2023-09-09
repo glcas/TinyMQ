@@ -1,8 +1,6 @@
 package ind.sac.mq.broker.handler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import ind.sac.mq.broker.model.bo.BrokerPushContext;
-import ind.sac.mq.broker.model.bo.GroupNameChannel;
 import ind.sac.mq.broker.model.dto.RegisterRequest;
 import ind.sac.mq.broker.model.po.MessagePO;
 import ind.sac.mq.broker.service.BrokerConsumerService;
@@ -17,15 +15,20 @@ import ind.sac.mq.common.rpc.RPCMessage;
 import ind.sac.mq.common.service.invoke.InvokeService;
 import ind.sac.mq.common.util.JsonUtil;
 import ind.sac.mq.consumer.constant.ConsumeStatus;
-import ind.sac.mq.consumer.dto.request.ConsumerPullRequest;
+import ind.sac.mq.consumer.dto.request.ConsumeStatusUpdateRequest;
 import ind.sac.mq.consumer.dto.request.ConsumerSubscribeRequest;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class BrokerHandler extends SimpleChannelInboundHandler {
+
+    private final Logger logger = LoggerFactory.getLogger(BrokerHandler.class);
 
     private final InvokeService invokeService;
 
@@ -33,17 +36,19 @@ public class BrokerHandler extends SimpleChannelInboundHandler {
 
     private final BrokerProducerService producerService;
 
-    private final BrokerPersistenceService persistService;
+    private final BrokerPersistenceService persistenceService;
 
     private final BrokerPushService pushService;
 
     private final long responseTimeout;
 
-    public BrokerHandler(InvokeService invokeService, BrokerConsumerService consumerService, BrokerProducerService producerService, BrokerPersistenceService persistService, BrokerPushService pushService, long responseTimeout) {
+    private final ExecutorService executorService = Executors.newFixedThreadPool(3);
+
+    public BrokerHandler(InvokeService invokeService, BrokerConsumerService consumerService, BrokerProducerService producerService, BrokerPersistenceService persistenceService, BrokerPushService pushService, long responseTimeout) {
         this.invokeService = invokeService;
         this.consumerService = consumerService;
         this.producerService = producerService;
-        this.persistService = persistService;
+        this.persistenceService = persistenceService;
         this.pushService = pushService;
         this.responseTimeout = responseTimeout;
     }
@@ -56,10 +61,14 @@ public class BrokerHandler extends SimpleChannelInboundHandler {
 
         RPCMessage rpcMessage = JsonUtil.parseJson(bytes, RPCMessage.class);
         if (rpcMessage.isRequest()) {
-            CommonResponse response = this.dispatch(rpcMessage, ctx);
-            if (response != null) {
-                InvokeService.writeResponse(rpcMessage, response, ctx);
-            }
+            executorService.submit(() -> {
+                CommonResponse response = this.dispatch(rpcMessage, ctx);
+                try {
+                    InvokeService.writeResponse(rpcMessage, response, ctx);
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
+            });
         } else {
             final long traceId = rpcMessage.getTraceId();
             invokeService.addResponse(traceId, rpcMessage);
@@ -68,6 +77,7 @@ public class BrokerHandler extends SimpleChannelInboundHandler {
 
     private CommonResponse dispatch(RPCMessage rpcMessage, ChannelHandlerContext ctx) {
         try {
+            logger.info(this.persistenceService.getMessageByTopicMap().toString());
             final String requestJSON = rpcMessage.getData();
             return switch (rpcMessage.getMethodType()) {
                 case PRODUCER_REGISTER ->
@@ -86,8 +96,12 @@ public class BrokerHandler extends SimpleChannelInboundHandler {
                         consumerService.unsubscribe(JsonUtil.parseJson(requestJSON, ConsumerSubscribeRequest.class), ctx.channel());
                 case CONSUMER_HEARTBEAT ->
                         consumerService.heartbeat(JsonUtil.parseJson(requestJSON, HeartbeatRequest.class), ctx.channel());
-                case CONSUMER_MSG_PULL ->
-                        persistService.pull(JsonUtil.parseJson(requestJSON, ConsumerPullRequest.class), ctx.channel());
+                case CONSUMER_LONG_POLLING ->
+                        consumerService.longPolling(requestJSON, persistenceService.getMessageByTopicMap(), ctx.channel());
+                case CONSUMER_PULL_ACK -> {
+                    ConsumeStatusUpdateRequest consumeStatusUpdateRequest = JsonUtil.parseJson(requestJSON, ConsumeStatusUpdateRequest.class);
+                    yield persistenceService.updateStatus(consumeStatusUpdateRequest.getMessageTraceID(), consumeStatusUpdateRequest.getConsumeStatus());
+                }
                 default -> throw new UnsupportedOperationException("Request method type temporarily unsupported.");
             };
         } catch (Exception e) {
@@ -99,22 +113,12 @@ public class BrokerHandler extends SimpleChannelInboundHandler {
         Message message = JsonUtil.parseJson(requestJSON, Message.class);
 
         // 必须先持久化消息，因为异步发送消息方法将在此后更新持久化消息的状态
-        MessagePO persistPutMsg = new MessagePO();
-        persistPutMsg.setMessage(message);
-        persistPutMsg.setConsumeStatus(ConsumeStatus.IDLE);
-        CommonResponse response = persistService.save(persistPutMsg);
-
-        List<GroupNameChannel> channelList = consumerService.listSubscribedConsumers(message);
-        // 只有此主题+标签消息目前有消费者订阅时才推送
-        if (!channelList.isEmpty()) {
-            BrokerPushContext pushContext = BrokerPushContext.newInstance()
-                    .setChannelList(channelList)
-                    .setPersistenceService(persistService)
-                    .setMessagePO(persistPutMsg)
-                    .setInvokeService(invokeService)
-                    .setResponseTimeout(responseTimeout);
-            pushService.asyncPush(pushContext);
-        }
+        MessagePO messagePO = new MessagePO();
+        messagePO.setMessage(message);
+        messagePO.setConsumeStatus(ConsumeStatus.IDLE);
+        CommonResponse response = persistenceService.save(messagePO);
+//        logger.info(persistService.getMessageByTopicMap().toString());
+        consumerService.notifyPendingConsumers(messagePO);
 
         return sendOneWay ? null : response;
     }

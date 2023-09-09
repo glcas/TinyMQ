@@ -5,15 +5,17 @@ import ind.sac.mq.broker.constant.BrokerConst;
 import ind.sac.mq.common.dto.Message;
 import ind.sac.mq.common.util.JsonUtil;
 import ind.sac.mq.producer.dto.SendResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 class MQProducerTest {
 
-    private static final int producerNum = 2;
+    private static final int producerNum = 3;
 
-    private static final int brokerNum = 5;
+    private static final int brokerNum = 1;
 
     public static void main(String[] args) throws InterruptedException, JsonProcessingException {
         StringBuilder brokerAddrBuilder = new StringBuilder();
@@ -24,6 +26,7 @@ class MQProducerTest {
         for (int i = 0; i < producerNum; i++) {
             MQProducer producer = new MQProducer();
             producer.setBrokerAddress(brokerAddrBuilder.toString());
+            producer.setResponseTimeout(Integer.MAX_VALUE);
             producer.start();
 
             Message message = new Message();
@@ -32,9 +35,8 @@ class MQProducerTest {
             message.setPayload(("Consumer " + (i + 1) + "&" + (i + 2) + " should received this message.").getBytes(StandardCharsets.UTF_8));
             SendResult sendResult = producer.syncSend(message);
 
-            System.out.println("Producer" + (i + 1) + " send result: " + JsonUtil.writeAsJsonString(sendResult));
+            Logger logger = LoggerFactory.getLogger(MQProducerTest.class);
+            logger.info("Producer" + (i + 1) + " send result: " + JsonUtil.writeAsJsonString(sendResult));
         }
-
     }
-
 }

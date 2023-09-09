@@ -35,4 +35,12 @@ public class MessagePO {
     public void setConsumeStatus(ConsumeStatus consumeStatus) {
         this.consumeStatus = consumeStatus;
     }
+
+    @Override
+    public String toString() {
+        return "MessagePO{" +
+                "message=" + message.getTopic() + ", " + message.getTags() +
+                "status=" + consumeStatus +
+                '}';
+    }
 }

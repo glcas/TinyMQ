@@ -7,20 +7,28 @@ import java.util.List;
 
 public class ConsumerPullResponse extends CommonResponse {
 
-    private List<Message> list;
+    private List<Message> messages;
 
-    public List<Message> getList() {
-        return list;
+    public ConsumerPullResponse() {
     }
 
-    public void setList(List<Message> list) {
-        this.list = list;
+    public ConsumerPullResponse(String responseCode, String responseMessage, List<Message> messages) {
+        super(responseCode, responseMessage);
+        this.messages = messages;
+    }
+
+    public List<Message> getMessages() {
+        return messages;
+    }
+
+    public void setMessages(List<Message> messages) {
+        this.messages = messages;
     }
 
     @Override
     public String toString() {
         return "ConsumerPullResponse{" +
-                "list=" + list +
+                "list=" + messages +
                 '}';
     }
 }

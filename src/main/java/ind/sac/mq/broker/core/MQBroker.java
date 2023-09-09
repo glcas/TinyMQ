@@ -72,10 +72,6 @@ public class MQBroker extends Thread {
         this.responseTimeout = responseTimeout;
     }
 
-    private ChannelHandler initChannelHandler() {
-        return new BrokerHandler(invokeService, brokerConsumerService, brokerProducerService, brokerPersistenceService, brokerPushService, responseTimeout);
-    }
-
     @Override
     public void run() {
         logger.info("Message queue broker start to listening on port {}", port);
@@ -91,14 +87,14 @@ public class MQBroker extends Thread {
             ServerBootstrap serverBootstrap = new ServerBootstrap();
             serverBootstrap.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
-                    .childHandler(new ChannelInitializer<Channel>() {
+                    .childHandler(new ChannelInitializer<>() {
                         @Override
                         protected void initChannel(Channel channel) throws Exception {
                             channel.pipeline()
                                     // 这里添加的两个handler都是inbound，顺序执行
                                     // 如果是outbound的就是逆序，ctx.write(&flush)会将写的内容首先送至channel出站方向
                                     .addLast(new DelimiterBasedFrameDecoder(DelimiterUtil.LENGTH, delimiterBuf))
-                                    .addLast(initChannelHandler());
+                                    .addLast(new BrokerHandler(invokeService, brokerConsumerService, brokerProducerService, brokerPersistenceService, brokerPushService, responseTimeout));
                         }
                     })
                     // 客户端连接请求等待队列大小

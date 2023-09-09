@@ -5,6 +5,7 @@ import ind.sac.mq.common.dto.request.CommonRequest;
 import java.util.List;
 import java.util.Objects;
 
+// TODO 在pull模式中作为响应的一部分，考虑改为不继承CommonRequest，并新建包含消息类、继承CommonRequest的sendMsgReq类
 public class Message extends CommonRequest {
 
     private String topic;

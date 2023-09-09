@@ -47,8 +47,8 @@ public class ConsumerHandler extends SimpleChannelInboundHandler {
             CommonResponse response = this.process(rpcMessage, channelHandlerContext);
             InvokeService.writeResponse(rpcMessage, response, channelHandlerContext);
         } else {
-            final long requestId = rpcMessage.getTraceId();
-            invokeService.addResponse(requestId, rpcMessage);
+            final long traceId = rpcMessage.getTraceId();
+            invokeService.addResponse(traceId, rpcMessage);
         }
 
     }

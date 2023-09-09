@@ -6,9 +6,6 @@ import ind.sac.mq.common.dto.Message;
 import ind.sac.mq.common.dto.response.CommonResponse;
 import ind.sac.mq.common.response.CommonResponseCode;
 import ind.sac.mq.consumer.constant.ConsumeStatus;
-import ind.sac.mq.consumer.dto.request.ConsumerPullRequest;
-import ind.sac.mq.consumer.dto.response.ConsumerPullResponse;
-import io.netty.channel.Channel;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +13,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class BrokerPersistenceServiceImpl implements BrokerPersistenceService {
-
     /**
      * key: topic, value: MessagePO
      */
@@ -51,7 +47,7 @@ public class BrokerPersistenceServiceImpl implements BrokerPersistenceService {
     }
 
     @Override
-    public ConsumerPullResponse pull(ConsumerPullRequest pullRequest, Channel channel) {
-        return null;
+    public Map<String, List<MessagePO>> getMessageByTopicMap() {
+        return messageByTopicMap;
     }
 }

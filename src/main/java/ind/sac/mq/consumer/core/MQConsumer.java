@@ -3,6 +3,7 @@ package ind.sac.mq.consumer.core;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import ind.sac.mq.broker.model.dto.RegisterRequest;
 import ind.sac.mq.common.constant.MethodType;
+import ind.sac.mq.common.dto.Message;
 import ind.sac.mq.common.dto.request.HeartbeatRequest;
 import ind.sac.mq.common.dto.response.CommonResponse;
 import ind.sac.mq.common.exception.MQException;
@@ -16,14 +17,19 @@ import ind.sac.mq.common.service.shutdown.impl.ClientShutdownHook;
 import ind.sac.mq.common.util.AddressUtil;
 import ind.sac.mq.common.util.DelimiterUtil;
 import ind.sac.mq.common.util.SnowFlake;
+import ind.sac.mq.consumer.constant.ConsumeStatus;
 import ind.sac.mq.consumer.constant.ConsumerConst;
 import ind.sac.mq.consumer.constant.ConsumerResponseCode;
+import ind.sac.mq.consumer.dto.request.ConsumeStatusUpdateRequest;
+import ind.sac.mq.consumer.dto.request.ConsumerPullRequest;
 import ind.sac.mq.consumer.dto.request.ConsumerSubscribeRequest;
+import ind.sac.mq.consumer.dto.response.ConsumerPullResponse;
 import ind.sac.mq.consumer.handler.ConsumerHandler;
+import ind.sac.mq.consumer.record.SubscribeInfo;
 import ind.sac.mq.consumer.service.listener.ConsumerListener;
 import ind.sac.mq.consumer.service.listener.ConsumerListenerService;
+import ind.sac.mq.consumer.service.listener.impl.ConsumerListenerContextImpl;
 import ind.sac.mq.consumer.service.listener.impl.ConsumerListenerServiceImpl;
-import ind.sac.mq.consumer.service.subscribe.SubscribeInfo;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
@@ -43,31 +49,31 @@ public class MQConsumer extends Thread implements Destroyable {
 
     private final String groupName;
 
-    private final SnowFlake snowFlake;
-
     private final List<Channel> channels = new ArrayList<>();
+    private final EventLoopGroup workerGroup = new NioEventLoopGroup();  // channel线程池
+
+    private final SnowFlake snowFlake;
 
     private final InvokeService invokeService = new InvokeServiceImpl();
 
     private final ConsumerListenerService listenerService = new ConsumerListenerServiceImpl();
+    private final ScheduledThreadPoolExecutor scheduledThreadPoolExecutor = new ScheduledThreadPoolExecutor(10);
+    private int weight = 0;  // 本消费者的权重
+    private String brokerAddress;
+
     // 本地记录且同步此消费者的订阅信息，以便在消费者注销时批量取消订阅
     private final Set<SubscribeInfo> subscribeInfos = new HashSet<>();
-    private String brokerAddress;
-    // 单位：毫秒
-    private long responseTimeout = 5000;
-
-    private final ScheduledThreadPoolExecutor heartbeatScheduledExecutor = new ScheduledThreadPoolExecutor(8);
-
-    // channel线程池
-    private final EventLoopGroup workerGroup = new NioEventLoopGroup();
+    private long responseTimeout = 5000;  // 单位：毫秒
 
     private String delimiter = DelimiterUtil.DELIMITER;
 
     private boolean enable = false;
 
     private long waitTimeForRemainRequest = 60 * 1000;
-    // 本消费者的权重
-    private int weight = 0;
+
+    private long longPollTimeout = 30000 + this.responseTimeout;
+
+    private int pullSize = 10;
 
     public MQConsumer(String groupName, String brokerAddress, int datacenterId, int machineId) {
         this.groupName = groupName;
@@ -87,20 +93,25 @@ public class MQConsumer extends Thread implements Destroyable {
         this.brokerAddress = brokerAddress;
     }
 
+    public void setWeight(int weight) {
+        this.weight = weight;
+    }
+
     public void setResponseTimeout(long responseTimeout) {
         this.responseTimeout = responseTimeout;
+        this.longPollTimeout = 30000 + responseTimeout;
     }
 
     public void setWaitTimeForRemainRequest(long waitTimeForRemainRequest) {
         this.waitTimeForRemainRequest = waitTimeForRemainRequest;
     }
 
-    public void setWeight(int weight) {
-        this.weight = weight;
-    }
-
     public void setDelimiter(String delimiter) {
         this.delimiter = delimiter;
+    }
+
+    public void setPullSize(int pullSize) {
+        this.pullSize = pullSize;
     }
 
     @Override
@@ -156,7 +167,7 @@ public class MQConsumer extends Thread implements Destroyable {
                 logger.info("Registration sent to broker {}:{}, got response {}.", host, port, response);
 
                 // 心跳配置
-                heartbeatScheduledExecutor.scheduleAtFixedRate(() -> {
+                scheduledThreadPoolExecutor.scheduleAtFixedRate(() -> {
                     final HeartbeatRequest heartbeat = new HeartbeatRequest(snowFlake.nextId(), MethodType.CONSUMER_HEARTBEAT, this.groupName);
                     try {
                         InvokeService.callServer(channelFuture.channel(), heartbeat, CommonResponse.class, invokeService, responseTimeout);
@@ -166,9 +177,32 @@ public class MQConsumer extends Thread implements Destroyable {
                     }
                 }, 5, 5, TimeUnit.SECONDS);
 
+
                 // 客户端本地存储channel
                 this.channels.add(channelFuture.channel());
             }
+
+            // 长轮询配置
+            scheduledThreadPoolExecutor.scheduleWithFixedDelay(() -> {
+                // TODO 在这里添加负载情况判断，消费者中有大量消息未消费时暂停长轮询
+                if (!subscribeInfos.isEmpty()) {
+                    ConsumerPullRequest pullRequest = new ConsumerPullRequest(snowFlake.nextId(), MethodType.CONSUMER_LONG_POLLING, this.groupName, this.pullSize, this.subscribeInfos);
+                    channels.forEach((channel -> {
+                        try {
+                            ConsumerPullResponse pullResponse = InvokeService.callServer(channel, pullRequest, ConsumerPullResponse.class, invokeService, longPollTimeout);
+//                            logger.info(channel + " and " + pullResponse.toString());  // why messageList can be null in parallel-stream? 试一下打instance log出来，一个instance似乎可有多个channel
+                            for (Message message : pullResponse.getMessages()) {
+                                ConsumeStatus status = this.listenerService.consume(message, new ConsumerListenerContextImpl());
+                                ConsumeStatusUpdateRequest consumeStatusUpdateRequest = new ConsumeStatusUpdateRequest(snowFlake.nextId(), MethodType.CONSUMER_PULL_ACK, message.getTraceId(), status);
+                                InvokeService.callServer(channel, consumeStatusUpdateRequest, null, invokeService, responseTimeout);
+                            }
+                        } catch (Exception e) {
+                            logger.error("Error occur in long polling: ", e);
+                            throw new RuntimeException(e);
+                        }
+                    }));
+                }
+            }, 1000, 500, TimeUnit.MILLISECONDS);
 
             // 新建停机钩子并注册，ShutdownHook最终会调用传入的destroyable接口对象重写的destroyAll方法
             final ShutdownHook shutdownHook = new ClientShutdownHook(invokeService, this, waitTimeForRemainRequest);
@@ -189,7 +223,7 @@ public class MQConsumer extends Thread implements Destroyable {
     }
 
     /**
-     * 向所有已注册的broker订阅同一个消息，这要求producer只随机选一个broker发msg，不然consumer会收到重复消息
+     * 向所有已注册的broker订阅同一个消息
      */
     public void subscribe(String topicName, String tagRegex) throws InterruptedException, JsonProcessingException {
         // 检查异步的consumer初始化任务是否已完成，包括创建与broker之间的channel以及注册至broker，体现在enable标志位
@@ -197,11 +231,10 @@ public class MQConsumer extends Thread implements Destroyable {
             Thread.sleep(10);
         }
 
-        ConsumerSubscribeRequest request = new ConsumerSubscribeRequest(snowFlake.nextId(), MethodType.CONSUMER_SUB, groupName, topicName, tagRegex);
+        final ConsumerSubscribeRequest subscribeRequest = new ConsumerSubscribeRequest(snowFlake.nextId(), MethodType.CONSUMER_SUB, groupName, topicName, tagRegex);
 
-        for (Channel channel :
-                channels) {
-            CommonResponse response = Objects.requireNonNull(InvokeService.callServer(channel, request, CommonResponse.class, invokeService, responseTimeout));
+        for (Channel channel : channels) {
+            CommonResponse response = Objects.requireNonNull(InvokeService.callServer(channel, subscribeRequest, CommonResponse.class, invokeService, responseTimeout));
             if (!CommonResponseCode.SUCCESS.getCode().equals(response.getResponseCode())) {
                 throw new MQException(ConsumerResponseCode.CONSUMER_SUB_FAILED);
             }
@@ -243,6 +276,7 @@ public class MQConsumer extends Thread implements Destroyable {
             RegisterRequest unregisterReq = new RegisterRequest(snowFlake.nextId(), MethodType.CONSUMER_UNREGISTER, this.groupName, this.weight);
             InvokeService.callServer(channel, unregisterReq, null, invokeService, responseTimeout);
         }
+        scheduledThreadPoolExecutor.shutdown();
         workerGroup.shutdownGracefully();
     }
 }

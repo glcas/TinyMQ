@@ -1,6 +1,10 @@
 package ind.sac.mq.consumer.dto.request;
 
+import ind.sac.mq.common.constant.MethodType;
 import ind.sac.mq.common.dto.request.CommonRequest;
+import ind.sac.mq.consumer.record.SubscribeInfo;
+
+import java.util.Set;
 
 public class ConsumerPullRequest extends CommonRequest {
 
@@ -8,9 +12,17 @@ public class ConsumerPullRequest extends CommonRequest {
 
     private int pullSize;
 
-    private String topicName;
+    private Set<SubscribeInfo> subscribeInfos;
 
-    private String tagRegex;
+    public ConsumerPullRequest(long traceId, MethodType methodType, String groupName, int pullSize, Set<SubscribeInfo> subscribeInfos) {
+        super(traceId, methodType);
+        this.groupName = groupName;
+        this.pullSize = pullSize;
+        this.subscribeInfos = subscribeInfos;
+    }
+
+    public ConsumerPullRequest() {
+    }
 
     public String getGroupName() {
         return groupName;
@@ -28,29 +40,7 @@ public class ConsumerPullRequest extends CommonRequest {
         this.pullSize = pullSize;
     }
 
-    public String getTopicName() {
-        return topicName;
-    }
-
-    public void setTopicName(String topicName) {
-        this.topicName = topicName;
-    }
-
-    public String getTagRegex() {
-        return tagRegex;
-    }
-
-    public void setTagRegex(String tagRegex) {
-        this.tagRegex = tagRegex;
-    }
-
-    @Override
-    public String toString() {
-        return "ConsumerPullRequest{" +
-                "groupName='" + groupName + '\'' +
-                ", pullSize=" + pullSize +
-                ", topicName='" + topicName + '\'' +
-                ", tagRegex='" + tagRegex + '\'' +
-                '}';
+    public Set<SubscribeInfo> getSubscribeInfos() {
+        return subscribeInfos;
     }
 }

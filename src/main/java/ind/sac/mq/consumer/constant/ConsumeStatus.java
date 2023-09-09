@@ -1,7 +1,8 @@
 package ind.sac.mq.consumer.constant;
 
 public enum ConsumeStatus {
-    IDLE("IDLE", "Wait for consume."),
+    IDLE("IDLE", "Wait for consumer."),
+    PROCESSING("PROCESSING", "Broker and consumer are processing the message."),
     SUCCESS("SUCCESS", "Successfully consumed."),
     FAIL("FAIL", "Consume failed."),
     LATER("LATER", "Consume later.");

@@ -5,8 +5,8 @@ import io.netty.channel.Channel;
 import java.net.InetSocketAddress;
 
 /**
- * Info of one client, including its group name, rpc remote host&port(got from channel), client weight and last access time. <p/>
- * All of them are constructed&used by server(broker), some info sent from client. <p/>
+ * Info of one client, including its group name, rpc remote host&port(got from channel), client weight and last access time. <br/>
+ * All of them are constructed&used by server(broker), some info sent from client. <br/>
  * Using case: registration, heartbeat, recording service info based on channel.
  */
 public class ServiceEntry {

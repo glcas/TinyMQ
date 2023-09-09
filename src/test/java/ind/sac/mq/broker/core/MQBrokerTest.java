@@ -4,7 +4,7 @@ import ind.sac.mq.broker.constant.BrokerConst;
 
 class MQBrokerTest {
 
-    private static final int brokerNum = 5;
+    private static final int brokerNum = 1;
 
     public static void main(String[] args) {
         for (int i = 0; i < brokerNum; i++) {

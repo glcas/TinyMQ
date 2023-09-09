@@ -7,7 +7,7 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * 本类是mq.common.dto中请求/响应类的封装，那些请求/响应类json化后存于本类的data字段 <p/>
+ * 本类是mq.common.dto中请求/响应类的封装，那些请求/响应类json化后存于本类的data字段 <br/>
  * 本类data字段存储的响应类已包含了业务逻辑得到的成功/失败结果
  * 故本类的响应字段（responseCode/responseMessage)与业务逻辑无关，只主动写入例如请求超时(TIMEOUT)这样的技术支持类型的响应信息
  * 但其存在的意义是为了将响应信息提取至RPC层级

@@ -3,7 +3,7 @@ package ind.sac.mq.broker.model.bo;
 import java.util.Objects;
 
 /**
- * Includes info of group name, topic name, tag regex, channel id and url(extends from RPCAddress).
+ * Includes info of group name, topic name, tag regex and channel id.
  */
 public class SubscribedConsumer {
 

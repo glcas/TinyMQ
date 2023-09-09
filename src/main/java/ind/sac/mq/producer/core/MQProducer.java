@@ -41,6 +41,10 @@ public class MQProducer extends Thread implements Destroyable {
 
     private final String groupName;
 
+    private int weight = 0;
+
+    private String brokerAddress;
+
     private final SnowFlake snowFlake;
 
     private final InvokeService invokeService = new InvokeServiceImpl();
@@ -52,11 +56,7 @@ public class MQProducer extends Thread implements Destroyable {
 
     private long waitTimeForRemainRequest = 60 * 1000;
 
-    private int weight = 0;
-
     private boolean enable = false;
-
-    private String brokerAddress;
 
     private String delimiter = DelimiterUtil.DELIMITER;
 
@@ -80,6 +80,10 @@ public class MQProducer extends Thread implements Destroyable {
         this.brokerAddress = brokerAddress;
     }
 
+    public void setWeight(int weight) {
+        this.weight = weight;
+    }
+
     public void setResponseTimeout(long responseTimeout) {
         this.responseTimeout = responseTimeout;
     }
@@ -90,10 +94,6 @@ public class MQProducer extends Thread implements Destroyable {
 
     public void setDelimiter(String delimiter) {
         this.delimiter = delimiter;
-    }
-
-    public void setWeight(int weight) {
-        this.weight = weight;
     }
 
     @Override
