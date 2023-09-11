@@ -33,7 +33,7 @@ class MQProducerTest {
             message.setTopic("TOPIC");
             message.setTags(Arrays.asList("TAG_" + (i + 1), "TAG_" + (i + 2)));
             message.setPayload(("Consumer " + (i + 1) + "&" + (i + 2) + " should received this message.").getBytes(StandardCharsets.UTF_8));
-            SendResult sendResult = producer.syncSend(message);
+            SendResult sendResult = producer.send(message);
 
             Logger logger = LoggerFactory.getLogger(MQProducerTest.class);
             logger.info("Producer" + (i + 1) + " send result: " + JsonUtil.writeAsJsonString(sendResult));

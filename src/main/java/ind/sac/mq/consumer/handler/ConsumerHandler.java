@@ -59,22 +59,18 @@ public class ConsumerHandler extends SimpleChannelInboundHandler {
         String channelId = channelHandlerContext.channel().id().asLongText();
         logger.debug("channelId: {} - Received method {} contents {}.", channelId, methodType, data);
         if (methodType == MethodType.BROKER_MSG_PUSH) {
-            logger.info("Received message: {}", data);
+            logger.debug("Received message: {}", data);
             // consume message
-            return this.consume(data);
+            try {
+                Message message = JsonUtil.parseJson(data, Message.class);
+                ConsumeStatus status = this.listenerService.consume(message, new ConsumerListenerContextImpl());
+                return new ConsumeResponse(CommonResponseCode.SUCCESS.getCode(), CommonResponseCode.SUCCESS.getMessage(), status);
+            } catch (Exception e) {
+                logger.error("Consumed message error.", e);
+                return new ConsumeResponse(CommonResponseCode.FAIL.getCode(), CommonResponseCode.FAIL.getMessage());
+            }
         }
         throw new UnsupportedOperationException("Method type temporarily unsupported.");
-    }
-
-    private CommonResponse consume(String mqMsgStr) {
-        try {
-            Message message = JsonUtil.parseJson(mqMsgStr, Message.class);
-            ConsumeStatus status = this.listenerService.consume(message, new ConsumerListenerContextImpl());
-            return new ConsumeResponse(CommonResponseCode.SUCCESS.getCode(), CommonResponseCode.SUCCESS.getMessage(), status);
-        } catch (Exception e) {
-            logger.error("Consumed message error.", e);
-            return new ConsumeResponse(CommonResponseCode.FAIL.getCode(), CommonResponseCode.FAIL.getMessage());
-        }
     }
 
     public InvokeService getInvokeService() {

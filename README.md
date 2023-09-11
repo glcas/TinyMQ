@@ -1,7 +1,7 @@
 # MQ-Toy
 
-A reproduction of [houbb/mq](https://github.com/houbb/mq), at the same time a tiny version
-of [RocketMQ](https://rocketmq.apache.org/).
+A tiny version of [RocketMQ](https://rocketmq.apache.org/), inspired
+from [houbb/mq](https://github.com/houbb/mq).
 
 ## Enhancement
 
@@ -11,7 +11,7 @@ Highlights several enhancements compared with [houbb/mq](https://github.com/houb
 - for robustness, json parser/wrapper change from [fastjson](https://github.com/alibaba/fastjson)
   to [Jackson](https://github.com/FasterXML/jackson)
 - generate [Snowflake ID](https://en.wikipedia.org/wiki/Snowflake_ID), instead of original UUID
-- message push based on long polling
+- default message push relies on long polling, while original push only used for urgent message
 - performance improvement and more reasonable implementation of details
 - cleaner code, naming and structure, with more notes
 

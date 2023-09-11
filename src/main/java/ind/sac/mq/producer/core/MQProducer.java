@@ -41,7 +41,7 @@ public class MQProducer extends Thread implements Destroyable {
 
     private final String groupName;
 
-    private int weight = 0;
+    private int weight = ProducerConst.DEFAULT_WEIGHT;
 
     private String brokerAddress;
 
@@ -52,9 +52,9 @@ public class MQProducer extends Thread implements Destroyable {
     private final List<Channel> channels = new ArrayList<>();
 
     // 单位：毫秒
-    private long responseTimeout = 5000;
+    private long responseTimeout = ProducerConst.DEFAULT_RESPONSE_TIMEOUT;
 
-    private long waitTimeForRemainRequest = 60 * 1000;
+    private long waitTimeForRemainRequest = ProducerConst.DEFAULT_WAIT_TIME_FOR_REMAIN_REQUEST;
 
     private boolean enable = false;
 
@@ -154,22 +154,30 @@ public class MQProducer extends Thread implements Destroyable {
         }
     }
 
-    public SendResult syncSend(Message message) throws JsonProcessingException, InterruptedException {
+    private SendResult sendProcess(Message message, MethodType sendMethod) throws InterruptedException, JsonProcessingException {
         // 确保producer可用（成功启动）才执行消息发送功能
         while (!this.enable()) {
             Thread.sleep(10);
         }
-
         long traceId = this.snowFlake.nextId();
         message.setTraceId(traceId);
-        message.setMethodType(MethodType.PRODUCER_SEND_MSG);
+        message.setMethodType(sendMethod);
         Channel channel = Objects.requireNonNull(RandomUtil.loadBalance(channels, message.getShardingKey()));
-        CommonResponse response = Objects.requireNonNull(InvokeService.callServer(channel, message, CommonResponse.class, invokeService, responseTimeout));
-        if (CommonResponseCode.SUCCESS.getCode().equals(response.getResponseCode())) {
+        if (sendMethod == MethodType.PRODUCER_SEND_MSG_ONE_WAY) {
+            InvokeService.callServer(channel, message, null, invokeService, responseTimeout);
             return SendResult.of(traceId, SendStatus.SUCCESS);
         } else {
-            return SendResult.of(traceId, SendStatus.FAIL);
+            CommonResponse response = Objects.requireNonNull(InvokeService.callServer(channel, message, CommonResponse.class, invokeService, responseTimeout));
+            if (CommonResponseCode.SUCCESS.getCode().equals(response.getResponseCode())) {
+                return SendResult.of(traceId, SendStatus.SUCCESS);
+            } else {
+                return SendResult.of(traceId, SendStatus.FAIL);
+            }
         }
+    }
+
+    public SendResult send(Message message) throws JsonProcessingException, InterruptedException {
+        return this.sendProcess(message, MethodType.PRODUCER_SEND_MSG);
     }
 
     /**
@@ -179,15 +187,17 @@ public class MQProducer extends Thread implements Destroyable {
      * @return Success signal
      */
     public SendResult onewaySend(Message message) throws JsonProcessingException, InterruptedException {
-        while (!this.enable()) {
-            Thread.sleep(10);
-        }
-        long traceId = this.snowFlake.nextId();
-        message.setTraceId(traceId);
-        message.setMethodType(MethodType.PRODUCER_SEND_MSG);
-        Channel channel = Objects.requireNonNull(RandomUtil.loadBalance(channels, message.getShardingKey()));
-        InvokeService.callServer(channel, message, null, invokeService, responseTimeout);
-        return SendResult.of(traceId, SendStatus.SUCCESS);
+        return this.sendProcess(message, MethodType.PRODUCER_SEND_MSG_ONE_WAY);
+    }
+
+    /**
+     * 调用broker的即时推送能力向consumer发送消息
+     *
+     * @param message MQ message
+     * @return Success signal
+     */
+    public SendResult urgentSend(Message message) throws InterruptedException, JsonProcessingException {
+        return this.sendProcess(message, MethodType.PRODUCER_SEND_MSG_URGENTLY);
     }
 
     @Override

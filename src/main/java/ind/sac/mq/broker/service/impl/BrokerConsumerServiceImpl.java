@@ -1,6 +1,7 @@
 package ind.sac.mq.broker.service.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import ind.sac.mq.broker.constant.BrokerConst;
 import ind.sac.mq.broker.constant.BrokerResponseCode;
 import ind.sac.mq.broker.model.bo.GroupNameChannel;
 import ind.sac.mq.broker.model.bo.PendingConsumer;
@@ -66,8 +67,6 @@ public class BrokerConsumerServiceImpl implements BrokerConsumerService {
     // kv: channelID - record PendingConsumer
     private final Map<String, PendingConsumer> pendingConsumers = new ConcurrentHashMap<>();
 
-    private final long longPollingTimeout = 30000;
-
     @Override
     public Map<String, SubscribedConsumer> getSubscribedConsumerMap() {
         return subscribedConsumerMap;
@@ -88,7 +87,7 @@ public class BrokerConsumerServiceImpl implements BrokerConsumerService {
                     }
                 }
             }
-        }, 2 * 60, 2 * 60, TimeUnit.SECONDS);
+        }, 2, 2, TimeUnit.MINUTES);
     }
 
     @Override
@@ -251,7 +250,7 @@ public class BrokerConsumerServiceImpl implements BrokerConsumerService {
             this.pendingConsumers.put(channelID, new PendingConsumer(currentThread, new ArrayList<>()));
             synchronized (currentThread) {
                 try {
-                    currentThread.wait(longPollingTimeout);
+                    currentThread.wait(BrokerConst.DEFAULT_LONG_POLLING_PENDING_TIMEOUT);
                 } catch (InterruptedException e) {
                     currentThread.interrupt();
                 }

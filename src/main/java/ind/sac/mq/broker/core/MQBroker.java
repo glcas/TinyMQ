@@ -42,7 +42,7 @@ public class MQBroker extends Thread {
     private BrokerPushService brokerPushService = new BrokerPushServiceImpl();
 
     // 单位：毫秒
-    private long responseTimeout = 5000;
+    private long responseTimeout = BrokerConst.DEFAULT_RESPONSE_TIMEOUT;
 
     public MQBroker(int port) {
         this.port = port;

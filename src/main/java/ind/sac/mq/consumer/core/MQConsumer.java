@@ -1,6 +1,7 @@
 package ind.sac.mq.consumer.core;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import ind.sac.mq.broker.constant.BrokerConst;
 import ind.sac.mq.broker.model.dto.RegisterRequest;
 import ind.sac.mq.common.constant.MethodType;
 import ind.sac.mq.common.dto.Message;
@@ -60,22 +61,30 @@ public class MQConsumer extends Thread implements Destroyable {
 
     // 如果在定时任务配置里遍历channel并调用，会出现各channel间消息混杂的问题
     private final ScheduledThreadPoolExecutor scheduledThreadPoolExecutor = new ScheduledThreadPoolExecutor(10);
-    private int weight = 0;  // 本消费者的权重
+
+    // 拉取得到的消息在本地的缓冲
+    private final Queue<Message> messageBuffer = new LinkedList<>();
+
+    private int weight = ConsumerConst.DEFAULT_WEIGHT;  // 本消费者的权重
     private String brokerAddress;
 
     // 本地记录且同步此消费者的订阅信息，以便在消费者注销时批量取消订阅
     private final Set<SubscribeInfo> subscribeInfos = new HashSet<>();
-    private long responseTimeout = 5000;  // 单位：毫秒
+    private long responseTimeout = ConsumerConst.DEFAULT_RESPONSE_TIMEOUT;  // 单位：毫秒
 
     private String delimiter = DelimiterUtil.DELIMITER;
 
     private boolean enable = false;
 
-    private long waitTimeForRemainRequest = 60 * 1000;
+    private long waitTimeForRemainRequest = ConsumerConst.DEFAULT_WAIT_TIME_FOR_REMAIN_REQUEST;
 
-    private long longPollTimeout = 30000 + this.responseTimeout;
+    private long longPollTimeout = BrokerConst.DEFAULT_LONG_POLLING_PENDING_TIMEOUT + this.responseTimeout;
 
-    private int pullSize = 10;
+    private int pullSize = ConsumerConst.DEFAULT_PULL_SIZE;
+
+    private int messagePullStopThreshold = ConsumerConst.DEFAULT_MESSAGE_PULL_STOP_THRESHOLD;
+
+    private int messagePullRestartThreshold = ConsumerConst.DEFAULT_MESSAGE_PULL_RESTART_THRESHOLD;
 
     public MQConsumer(String groupName, String brokerAddress, int datacenterId, int machineId) {
         this.groupName = groupName;
@@ -101,7 +110,7 @@ public class MQConsumer extends Thread implements Destroyable {
 
     public void setResponseTimeout(long responseTimeout) {
         this.responseTimeout = responseTimeout;
-        this.longPollTimeout = 30000 + responseTimeout;
+        this.longPollTimeout = BrokerConst.DEFAULT_LONG_POLLING_PENDING_TIMEOUT + responseTimeout;
     }
 
     public void setWaitTimeForRemainRequest(long waitTimeForRemainRequest) {
@@ -114,6 +123,14 @@ public class MQConsumer extends Thread implements Destroyable {
 
     public void setPullSize(int pullSize) {
         this.pullSize = pullSize;
+    }
+
+    public void setMessagePullStopThreshold(int messagePullStopThreshold) {
+        this.messagePullStopThreshold = messagePullStopThreshold;
+    }
+
+    public void setMessagePullRestartThreshold(int messagePullRestartThreshold) {
+        this.messagePullRestartThreshold = messagePullRestartThreshold;
     }
 
     @Override

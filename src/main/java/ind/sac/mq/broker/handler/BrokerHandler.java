@@ -1,12 +1,15 @@
 package ind.sac.mq.broker.handler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import ind.sac.mq.broker.model.bo.BrokerPushContext;
+import ind.sac.mq.broker.model.bo.GroupNameChannel;
 import ind.sac.mq.broker.model.dto.RegisterRequest;
 import ind.sac.mq.broker.model.po.MessagePO;
 import ind.sac.mq.broker.service.BrokerConsumerService;
 import ind.sac.mq.broker.service.BrokerPersistenceService;
 import ind.sac.mq.broker.service.BrokerProducerService;
 import ind.sac.mq.broker.service.BrokerPushService;
+import ind.sac.mq.common.constant.MethodType;
 import ind.sac.mq.common.dto.Message;
 import ind.sac.mq.common.dto.request.HeartbeatRequest;
 import ind.sac.mq.common.dto.response.CommonResponse;
@@ -23,6 +26,7 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -78,13 +82,14 @@ public class BrokerHandler extends SimpleChannelInboundHandler {
     private CommonResponse dispatch(RPCMessage rpcMessage, ChannelHandlerContext ctx) {
         try {
             final String requestJSON = rpcMessage.getData();
-            return switch (rpcMessage.getMethodType()) {
+            MethodType requestMethod = rpcMessage.getMethodType();
+            return switch (requestMethod) {
                 case PRODUCER_REGISTER ->
                         producerService.register(JsonUtil.parseJson(requestJSON, RegisterRequest.class), ctx.channel());
                 case PRODUCER_UNREGISTER ->
                         producerService.unregister(JsonUtil.parseJson(requestJSON, RegisterRequest.class), ctx.channel());
-                case PRODUCER_SEND_MSG -> producerSendMessage(requestJSON, false);
-                case PRODUCER_SEND_MSG_ONE_WAY -> producerSendMessage(requestJSON, true);
+                case PRODUCER_SEND_MSG, PRODUCER_SEND_MSG_ONE_WAY, PRODUCER_SEND_MSG_URGENTLY ->
+                        producerSendMessage(requestJSON, requestMethod);
                 case CONSUMER_REGISTER ->
                         consumerService.register(JsonUtil.parseJson(requestJSON, RegisterRequest.class), ctx.channel());
                 case CONSUMER_UNREGISTER ->
@@ -108,7 +113,7 @@ public class BrokerHandler extends SimpleChannelInboundHandler {
         }
     }
 
-    private CommonResponse producerSendMessage(String requestJSON, boolean sendOneWay) throws JsonProcessingException {
+    private CommonResponse producerSendMessage(String requestJSON, MethodType sendMethod) throws JsonProcessingException {
         Message message = JsonUtil.parseJson(requestJSON, Message.class);
 
         // 必须先持久化消息，因为异步发送消息方法将在此后更新持久化消息的状态
@@ -117,8 +122,21 @@ public class BrokerHandler extends SimpleChannelInboundHandler {
         messagePO.setConsumeStatus(ConsumeStatus.IDLE);
         CommonResponse response = persistenceService.save(messagePO);
 
-        consumerService.notifyPendingConsumers(messagePO);
+        if (sendMethod == MethodType.PRODUCER_SEND_MSG_URGENTLY) {
+            List<GroupNameChannel> channelList = consumerService.listSubscribedConsumers(message);
+            if (!channelList.isEmpty()) {
+                BrokerPushContext pushContext = BrokerPushContext.newInstance()
+                        .setChannelList(channelList)
+                        .setPersistenceService(persistenceService)
+                        .setMessagePO(messagePO)
+                        .setInvokeService(invokeService)
+                        .setResponseTimeout(responseTimeout);
+                pushService.asyncPush(pushContext);
+            }
+        } else {
+            consumerService.notifyPendingConsumers(messagePO);
+        }
 
-        return sendOneWay ? null : response;
+        return sendMethod == MethodType.PRODUCER_SEND_MSG_ONE_WAY ? null : response;
     }
 }
