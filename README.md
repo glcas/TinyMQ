@@ -12,6 +12,7 @@ Highlights several enhancements compared with [houbb/mq](https://github.com/houb
   to [Jackson](https://github.com/FasterXML/jackson)
 - generate [Snowflake ID](https://en.wikipedia.org/wiki/Snowflake_ID), instead of original UUID
 - default message push relies on long polling, while original push only used for urgent message
+- decoupling message transfer and consumption, therefore peak cut
 - performance improvement and more reasonable implementation of details
 - cleaner code, naming and structure, with more notes
 

@@ -41,6 +41,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
@@ -62,8 +64,7 @@ public class MQConsumer extends Thread implements Destroyable {
     // 如果在定时任务配置里遍历channel并调用，会出现各channel间消息混杂的问题
     private final ScheduledThreadPoolExecutor scheduledThreadPoolExecutor = new ScheduledThreadPoolExecutor(10);
 
-    // 拉取得到的消息在本地的缓冲
-    private final Queue<Message> messageBuffer = new LinkedList<>();
+    private final ScheduledThreadPoolExecutor consumeExecutor = new ScheduledThreadPoolExecutor(1);
 
     private int weight = ConsumerConst.DEFAULT_WEIGHT;  // 本消费者的权重
     private String brokerAddress;
@@ -85,6 +86,9 @@ public class MQConsumer extends Thread implements Destroyable {
     private int messagePullStopThreshold = ConsumerConst.DEFAULT_MESSAGE_PULL_STOP_THRESHOLD;
 
     private int messagePullRestartThreshold = ConsumerConst.DEFAULT_MESSAGE_PULL_RESTART_THRESHOLD;
+
+    // 拉取得到的消息在本地的缓冲, 当生产速度大于消费速度时阻塞消息拉取，反之阻塞消费
+    private final BlockingQueue<Message> messageBuffer = new ArrayBlockingQueue<>(messagePullStopThreshold);
 
     public MQConsumer(String groupName, String brokerAddress, int datacenterId, int machineId) {
         this.groupName = groupName;
@@ -198,15 +202,12 @@ public class MQConsumer extends Thread implements Destroyable {
 
                 // 长轮询配置
                 scheduledThreadPoolExecutor.scheduleWithFixedDelay(() -> {
-                    // TODO 在这里添加负载情况判断，消费者中有大量消息未消费时暂停长轮询
                     if (!subscribeInfos.isEmpty()) {
                         ConsumerPullRequest pullRequest = new ConsumerPullRequest(snowFlake.nextId(), MethodType.CONSUMER_LONG_POLLING, this.groupName, this.pullSize, this.subscribeInfos);
                         try {
-                            ConsumerPullResponse pullResponse = InvokeService.callServer(channelFuture.channel(), pullRequest, ConsumerPullResponse.class, invokeService, longPollTimeout);
+                            ConsumerPullResponse pullResponse = Objects.requireNonNull(InvokeService.callServer(channelFuture.channel(), pullRequest, ConsumerPullResponse.class, invokeService, longPollTimeout));
                             for (Message message : pullResponse.getMessages()) {
-                                ConsumeStatus status = this.listenerService.consume(message, new ConsumerListenerContextImpl());
-                                ConsumeStatusUpdateRequest consumeStatusUpdateRequest = new ConsumeStatusUpdateRequest(snowFlake.nextId(), MethodType.CONSUMER_PULL_ACK, message.getTraceId(), status);
-                                InvokeService.callServer(channelFuture.channel(), consumeStatusUpdateRequest, null, invokeService, responseTimeout);
+                                messageBuffer.put(message);
                             }
                         } catch (Exception e) {
                             logger.error("Error occur in long polling: ", e);
@@ -214,6 +215,19 @@ public class MQConsumer extends Thread implements Destroyable {
                         }
                     }
                 }, 1000, 500, TimeUnit.MILLISECONDS);
+
+                // 解耦消息的拉取与消费
+                consumeExecutor.scheduleWithFixedDelay(() -> {
+                    try {
+                        Message message = messageBuffer.take();
+                        ConsumeStatus status = this.listenerService.consume(message, new ConsumerListenerContextImpl());
+                        ConsumeStatusUpdateRequest consumeStatusUpdateRequest = new ConsumeStatusUpdateRequest(snowFlake.nextId(), MethodType.CONSUMER_PULL_ACK, message.getTraceId(), status);
+                        InvokeService.callServer(channelFuture.channel(), consumeStatusUpdateRequest, null, invokeService, responseTimeout);
+                    } catch (Exception e) {
+                        logger.error("Error occur in consuming : ", e);
+                        throw new RuntimeException(e);
+                    }
+                }, 1000, 100, TimeUnit.MILLISECONDS);
 
                 // 客户端本地存储channel
                 this.channels.add(channelFuture.channel());
@@ -292,6 +306,7 @@ public class MQConsumer extends Thread implements Destroyable {
             InvokeService.callServer(channel, unregisterReq, null, invokeService, responseTimeout);
         }
         scheduledThreadPoolExecutor.shutdown();
+        consumeExecutor.shutdown();
         workerGroup.shutdownGracefully();
     }
 }
