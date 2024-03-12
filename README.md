@@ -1,4 +1,4 @@
-# MQ-Toy
+# TinyMQ
 
 A tiny version of [RocketMQ](https://rocketmq.apache.org/), inspired
 from [houbb/mq](https://github.com/houbb/mq).
